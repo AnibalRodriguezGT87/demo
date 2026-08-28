@@ -4,6 +4,11 @@ import lombok.Setter;
 
 import java.util.Map;
 
+/**
+ * IsoMessage class represents an ISO 8583 message.
+ * It includes the Message Type Indicator (MTI), primary and secondary bitmaps,
+ * and a map of data elements.
+ */
 @Getter
 @Setter
 public class IsoMessage {
@@ -23,6 +28,11 @@ public class IsoMessage {
         this.dataElements = dataElements;
     }
 
+    /**
+     * Returns a string representation of the IsoMessage object.
+     *
+     * @return a string containing the MTI, primary bitmap, secondary bitmap, and data elements
+     */
     @Override
     public String toString() {
         return "IsoMessage{" +
