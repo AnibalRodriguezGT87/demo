@@ -14,7 +14,6 @@ target/
 
 ### IntelliJ IDEA ###
 .idea
-.mvn
 mvnw
 mvnw.cmd
 *.iws
@@ -33,3 +32,4 @@ build/
 
 ### VS Code ###
 .vscode/
+/.mvn/
