@@ -3,6 +3,10 @@ package com.ISO;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * IsoDefinition class represents the definition of an ISO data element.
+ * It includes the type of data element, its size, length definition, and name.
+ */
 @Getter
 @Setter
 public class IsoDefinition {

@@ -5,10 +5,21 @@ import java.util.*;
 import static com.ISO.Constants.FIXED_LENGTH_FIELDS;
 import static com.ISO.Constants.MTI_LENGTH;
 
+/**
+ * Iso8583Parser class is responsible for parsing ISO 8583 messages.
+ * It extracts the Message Type Indicator (MTI), primary and secondary bitmaps,
+ * and data elements from the provided message string.
+ */
 public class Iso8583Parser {
 
     private final int BITMAP_INDEX = 16;
 
+    /**
+     * Parses the given ISO 8583 message string and returns an IsoMessage object.
+     *
+     * @param decodeMessage the ISO 8583 message string to be parsed
+     * @return an IsoMessage object containing the parsed MTI, bitmaps, and data elements
+     */
     public IsoMessage parse(String decodeMessage) {
         String bitmapBinary;
         String primaryBitmap;
@@ -34,6 +45,14 @@ public class Iso8583Parser {
         return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
     }
 
+    /**
+     * Extracts data elements from the given ISO 8583 message string based on the provided bitmap.
+     *
+     * @param decodeMessage the ISO 8583 message string
+     * @param bitmapBinary  the binary representation of the bitmap
+     * @param index         the starting index for reading data elements
+     * @param dataElements  a map to store the extracted data elements
+     */
     public void getDataElements(String decodeMessage, String bitmapBinary,int index, Map<Integer, String> dataElements) {
         for (int field = 2; field <= bitmapBinary.length(); field++) {
 

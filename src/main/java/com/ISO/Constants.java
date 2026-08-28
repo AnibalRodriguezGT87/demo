@@ -2,6 +2,10 @@ package com.ISO;
 
 import java.util.Map;
 
+/**
+ * Constants class holds constant values and definitions used in the ISO processing.
+ * It includes a map of fixed-length fields and their corresponding ISO definitions.
+ */
 public class Constants {
 
     public static final Map<Integer, IsoDefinition> FIXED_LENGTH_FIELDS = Map.of(

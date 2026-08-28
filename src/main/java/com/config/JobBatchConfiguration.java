@@ -17,9 +17,20 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.transaction.PlatformTransactionManager;
 
+/**
+ * JobBatchConfiguration class is a configuration class for Spring Batch jobs.
+ * It defines beans for reading from a CSV file, processing the data, and writing to an output file.
+ * It also configures a job and a step for the batch processing.
+**/
 @Configuration
 public class JobBatchConfiguration {
 
+    /**
+     * This method defines a FlatFileItemReader bean that reads data from a CSV file.
+     * It skips the first line (header) and maps each line to a String.
+     *
+     * @return a FlatFileItemReader<String> instance
+    */
     @Bean
     public FlatFileItemReader<String> read() {
         return new FlatFileItemReaderBuilder<String>()
@@ -30,6 +41,12 @@ public class JobBatchConfiguration {
                 .build();
     }
 
+    /**
+     * This method defines a FlatFileItemWriter bean that writes data to an output file.
+     * It specifies the file location and uses a line aggregator to write each item as a line in the file.
+     *
+     * @return a FlatFileItemWriter<String> instance
+    */
     @Bean
     public FlatFileItemWriter<String> write() {
         String fileLocation = "src/main/resources/output.txt";
@@ -40,6 +57,14 @@ public class JobBatchConfiguration {
                 .build();
     }
 
+    /**
+     * This method defines a Job bean that represents the batch job.
+     * It takes a Step and a JobRepository as parameters and configures the job with a name, starting step, and an incrementer.
+     *
+     * @param step the Step to be executed in the job
+     * @param jobRepo the JobRepository for managing job metadata
+     * @return a Job instance
+    */
     @Bean
     public Job jobMaking(Step step,JobRepository jobRepo) {
          return new JobBuilder("making-job", jobRepo )
@@ -48,6 +73,18 @@ public class JobBatchConfiguration {
                 .build();
     }
 
+    /**
+     * This method defines a Step bean that represents a step in the batch job.
+     * It takes a FlatFileItemReader, TestProcessor, FlatFileItemWriter, JobRepository, and PlatformTransactionManager as parameters.
+     * It configures the step with a name, chunk size, reader, processor, and writer.
+     *
+     * @param read the FlatFileItemReader for reading data
+     * @param testProcessor the TestProcessor for processing data
+     * @param write the FlatFileItemWriter for writing data
+     * @param jobRepo the JobRepository for managing job metadata
+     * @param transactionManager the PlatformTransactionManager for managing transactions
+     * @return a Step instance
+    */
     @Bean
     public Step step(FlatFileItemReader<String> read,
                      TestProcessor testProcessor,
