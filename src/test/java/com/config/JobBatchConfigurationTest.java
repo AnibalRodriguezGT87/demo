@@ -1,6 +1,6 @@
 package com.config;
 
-import com.job.TestProcessor;
+import com.job.IsoMessageProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -42,7 +42,7 @@ public class JobBatchConfigurationTest {
     @Test
     void step_buildsStepWithName() {
         FlatFileItemReader<String> reader = mock(FlatFileItemReader.class);
-        TestProcessor processor = mock(TestProcessor.class);
+        IsoMessageProcessor processor = mock(IsoMessageProcessor.class);
         FlatFileItemWriter<String> writer = mock(FlatFileItemWriter.class);
         JobRepository jobRepo = mock(JobRepository.class);
         PlatformTransactionManager tx = mock(PlatformTransactionManager.class);

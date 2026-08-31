@@ -51,14 +51,14 @@ public class Iso8583ParserTest {
     }
 
     @Test
-    void parse_withMalformedMessage_throwsIsoExcepttion() {
+    void parse_withMalformedMessage_throwsIsoException() {
         Iso8583Parser parser = new Iso8583Parser();
         // Message too short to contain bitmap -> parsing should fail
         assertThrows(IsoExcepttion.class, () -> parser.parse("0100"));
     }
 
     @Test
-    void parse_withIncorrectLengthForVariableField_throwsIsoExcepttion() {
+    void parse_withIncorrectLengthForVariableField_throwsIsoException() {
         Iso8583Parser parser = new Iso8583Parser();
         // declare LLVAR length of 16 but provide only 5 chars -> should throw when parsing DE2
         String input = "0100" +

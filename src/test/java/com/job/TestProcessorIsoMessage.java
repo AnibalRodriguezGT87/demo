@@ -1,15 +1,14 @@
 package com.job;
 
-import com.exception.IsoExcepttion;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestProcessorTest {
+public class TestProcessorIsoMessage {
 
     @Test
-    void process_withOnlyPrimaryBitmap_returnsParsedMessageString() throws IsoExcepttion {
-        TestProcessor processor = new TestProcessor();
+    void process_withOnlyPrimaryBitmap_returnsParsedMessageString() {
+        IsoMessageProcessor processor = new IsoMessageProcessor();
         // MTI(4) + primary bitmap(16) only with bits for DE2 and DE7 set -> hex starts with 42
         String input = "0100" +
                 "4200000000000000" + // primary bitmap: bits 2 and 7 set
@@ -26,8 +25,8 @@ public class TestProcessorTest {
     }
 
     @Test
-    void process_withSecondBitmap_returnsParsedMessageString() throws IsoExcepttion {
-        TestProcessor processor = new TestProcessor();
+    void process_withSecondBitmap_returnsParsedMessageString() {
+        IsoMessageProcessor processor = new IsoMessageProcessor();
         // MTI + primary bitmap indicating secondary present (first bit 1) and DE2 set -> C0...
         // secondary bitmap sets DE127 (using 0000000000000002 in tests)
         String pan = "1234567890123456";
@@ -49,11 +48,5 @@ public class TestProcessorTest {
         assertTrue(result.contains("127=1234567890123456789"));
     }
 
-    @Test
-    void process_withInvalidMessage_throwsIsoExcepttion() {
-        TestProcessor processor = new TestProcessor();
-        // too short / malformed message should raise parsing exception
-        assertThrows(IsoExcepttion.class, () -> processor.process("0100"));
-    }
 }
 

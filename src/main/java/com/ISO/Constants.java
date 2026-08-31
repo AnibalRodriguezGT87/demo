@@ -16,4 +16,6 @@ public class Constants {
             127, new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105, "Private Use")
     );
     public static final int MTI_LENGTH = 4;
+
+    public static final int BITMAP_INDEX = 16;
 }
