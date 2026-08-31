@@ -1,4 +1,4 @@
-package com.ISO;
+package com.iso;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -1,4 +1,4 @@
-package com.ISO;
+package com.iso;
 
 /**
  * IsoTypeDataElementEnum enum defines the types of ISO data elements.

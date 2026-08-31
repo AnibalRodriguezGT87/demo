@@ -1,4 +1,4 @@
-package com.ISO;
+package com.iso;
 
 import org.junit.jupiter.api.Test;
 
