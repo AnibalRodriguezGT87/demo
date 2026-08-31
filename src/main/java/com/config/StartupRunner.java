@@ -1,5 +1,6 @@
 package com.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * It takes command-line arguments as job parameters and launches the specified job.
  */
 @Component
+@Slf4j
 public class StartupRunner implements CommandLineRunner {
 
     @Autowired
@@ -44,7 +46,7 @@ public class StartupRunner implements CommandLineRunner {
                 builder.addString(parts[0], parts[1]);
             }
         }
-        System.out.println("Job started with parameters: " + builder);
+        log.info("Job started with parameters: {}", builder);
 
         jobLauncher.run(jobMaking, builder.toJobParameters());
     }

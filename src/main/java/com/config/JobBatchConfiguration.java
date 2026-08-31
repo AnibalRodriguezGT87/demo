@@ -1,6 +1,6 @@
 package com.config;
 
-import com.job.TestProcessor;
+import com.job.IsoMessageProcessor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -79,7 +79,7 @@ public class JobBatchConfiguration {
      * It configures the step with a name, chunk size, reader, processor, and writer.
      *
      * @param read the FlatFileItemReader for reading data
-     * @param testProcessor the TestProcessor for processing data
+     * @param isoMessageProcessor the TestProcessor for processing data
      * @param write the FlatFileItemWriter for writing data
      * @param jobRepo the JobRepository for managing job metadata
      * @param transactionManager the PlatformTransactionManager for managing transactions
@@ -87,7 +87,7 @@ public class JobBatchConfiguration {
     */
     @Bean
     public Step step(FlatFileItemReader<String> read,
-                     TestProcessor testProcessor,
+                     IsoMessageProcessor isoMessageProcessor,
                      FlatFileItemWriter<String> write,
                      JobRepository jobRepo,
                      PlatformTransactionManager transactionManager) {
@@ -96,7 +96,7 @@ public class JobBatchConfiguration {
         return new StepBuilder("making-step", jobRepo)
                 .<String, String>chunk(2, transactionManager)
                 .reader(read)
-                .processor(testProcessor)
+                .processor(isoMessageProcessor)
                 .writer(write)
                 .build();
     }

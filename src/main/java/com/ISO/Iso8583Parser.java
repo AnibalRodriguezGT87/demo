@@ -1,9 +1,15 @@
 package com.ISO;
 
-import java.util.*;
+import com.exception.IsoExcepttion;
 
-import static com.ISO.Constants.FIXED_LENGTH_FIELDS;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import static com.ISO.Constants.BITMAP_INDEX;
 import static com.ISO.Constants.MTI_LENGTH;
+import static com.ISO.Constants.FIXED_LENGTH_FIELDS;
+
 
 /**
  * Iso8583Parser class is responsible for parsing ISO 8583 messages.
@@ -12,37 +18,39 @@ import static com.ISO.Constants.MTI_LENGTH;
  */
 public class Iso8583Parser {
 
-    private final int BITMAP_INDEX = 16;
-
     /**
      * Parses the given ISO 8583 message string and returns an IsoMessage object.
      *
      * @param decodeMessage the ISO 8583 message string to be parsed
      * @return an IsoMessage object containing the parsed MTI, bitmaps, and data elements
      */
-    public IsoMessage parse(String decodeMessage) {
+    public IsoMessage parse(String decodeMessage)  throws IsoExcepttion {
+
         String bitmapBinary;
         String primaryBitmap;
         String secondaryBitmap = "";
+        try {
+            ParseContext parseContext = new ParseContext(decodeMessage);
 
-        ParseContext parseContext = new ParseContext(decodeMessage);
+            String mti = parseContext.read(MTI_LENGTH);
 
-        String mti = parseContext.read(MTI_LENGTH);
+            primaryBitmap = parseContext.read(BITMAP_INDEX);
+            bitmapBinary = parseContext.hexToBinary(primaryBitmap);
 
-        primaryBitmap = parseContext.read(BITMAP_INDEX);
-        bitmapBinary = parseContext.hexToBinary(primaryBitmap);
+            // secondary bitmap
+            if (bitmapBinary.charAt(0) == '1') {
+                secondaryBitmap = parseContext.read(BITMAP_INDEX);
+                bitmapBinary += parseContext.hexToBinary(secondaryBitmap);
+            }
 
-        // secondary bitmap
-        if (bitmapBinary.charAt(0) == '1') {
-            secondaryBitmap = parseContext.read(BITMAP_INDEX);
-            bitmapBinary += parseContext. hexToBinary(secondaryBitmap);
+            Map<Integer, String> dataElements = new LinkedHashMap<>();
+            getDataElements(decodeMessage, bitmapBinary, parseContext.getIndex(), dataElements);
+            parseContext.logtMTI(mti);
+            return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
+        } catch (Exception e) {
+            throw new IsoExcepttion(e.getMessage());
         }
 
-        Map<Integer, String> dataElements = new LinkedHashMap<>();
-        getDataElements(decodeMessage, bitmapBinary, parseContext.getIndex(), dataElements);
-        parseContext.logtMTI(mti);
-
-        return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
     }
 
     /**
@@ -53,27 +61,31 @@ public class Iso8583Parser {
      * @param index         the starting index for reading data elements
      * @param dataElements  a map to store the extracted data elements
      */
-    public void getDataElements(String decodeMessage, String bitmapBinary,int index, Map<Integer, String> dataElements) {
-        for (int field = 2; field <= bitmapBinary.length(); field++) {
+    public void getDataElements(String decodeMessage, String bitmapBinary,int index, Map<Integer, String> dataElements) throws IsoExcepttion {
+        try {
+            for (int field = 2; field <= bitmapBinary.length(); field++) {
 
-            if (bitmapBinary.charAt(field - 1) == '1') {
+                if (bitmapBinary.charAt(field - 1) == '1') {
 
-                IsoDefinition size = FIXED_LENGTH_FIELDS.get(field);
+                    IsoDefinition size = FIXED_LENGTH_FIELDS.get(field);
 
-                 if (Objects.nonNull(size) && !size.getTypeDataElement().equals(IsoTypeDataElementEnum.FIXED)) {
-                     //get size of a DE
-                    int sizeElement = Integer.parseInt(decodeMessage.substring(index, index + size.getTypeElementSize()));
-                    int finalSize = index + size.getTypeElementSize() + sizeElement;
-                    String value = decodeMessage.substring(index + size.getTypeElementSize(), Math.min(finalSize, decodeMessage.length()));
-                    dataElements.put(field, value);
-                    index += size.getTypeElementSize() + size.getLengthDefinition();
-                 } else {
-                    String value = decodeMessage.substring(index , index +  size.getLengthDefinition());
-                    dataElements.put(field, value);
-                    index += size.getLengthDefinition();
+                    if (Objects.nonNull(size) && !size.getTypeDataElement().equals(IsoTypeDataElementEnum.FIXED)) {
+                        //get size of a DE
+                        int sizeElement = Integer.parseInt(decodeMessage.substring(index, index + size.getTypeElementSize()));
+                        int finalSize = index + size.getTypeElementSize() + sizeElement;
+                        String value = decodeMessage.substring(index + size.getTypeElementSize(), Math.min(finalSize, decodeMessage.length()));
+                        dataElements.put(field, value);
+                        index += size.getTypeElementSize() + size.getLengthDefinition();
+                    } else {
+                        String value = decodeMessage.substring(index , index +  size.getLengthDefinition());
+                        dataElements.put(field, value);
+                        index += size.getLengthDefinition();
+                    }
                 }
             }
-      }
+        } catch (Exception e) {
+            throw new IsoExcepttion(e.getMessage());
+        }
     }
 
 }
