@@ -1,4 +1,4 @@
-package com.ISO;
+package com.iso;
 
 import com.exception.IsoExcepttion;
 
@@ -6,9 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.ISO.Constants.BITMAP_INDEX;
-import static com.ISO.Constants.MTI_LENGTH;
-import static com.ISO.Constants.FIXED_LENGTH_FIELDS;
+import static com.iso.Constants.BITMAP_INDEX;
+import static com.iso.Constants.MTI_LENGTH;
+import static com.iso.Constants.FIXED_LENGTH_FIELDS;
 
 
 /**
