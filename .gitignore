@@ -16,6 +16,7 @@ target/
 .idea
 mvnw
 mvnw.cmd
+.gitattributes
 *.iws
 *.iml
 *.ipr
