@@ -1,6 +1,6 @@
 package com.iso;
 
-import com.exception.IsoExcepttion;
+import com.exception.IsoException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,7 +24,7 @@ public class Iso8583Parser {
      * @param decodeMessage the ISO 8583 message string to be parsed
      * @return an IsoMessage object containing the parsed MTI, bitmaps, and data elements
      */
-    public IsoMessage parse(String decodeMessage)  throws IsoExcepttion {
+    public IsoMessage parse(String decodeMessage)  throws IsoException {
 
         String bitmapBinary;
         String primaryBitmap;
@@ -48,7 +48,7 @@ public class Iso8583Parser {
             parseContext.logtMTI(mti);
             return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
         } catch (Exception e) {
-            throw new IsoExcepttion(e.getMessage());
+            throw new IsoException(e.getMessage());
         }
 
     }
@@ -61,7 +61,7 @@ public class Iso8583Parser {
      * @param index         the starting index for reading data elements
      * @param dataElements  a map to store the extracted data elements
      */
-    public void getDataElements(String decodeMessage, String bitmapBinary,int index, Map<Integer, String> dataElements) throws IsoExcepttion {
+    public void getDataElements(String decodeMessage, String bitmapBinary,int index, Map<Integer, String> dataElements) throws IsoException {
         try {
             for (int field = 2; field <= bitmapBinary.length(); field++) {
 
@@ -84,7 +84,7 @@ public class Iso8583Parser {
                 }
             }
         } catch (Exception e) {
-            throw new IsoExcepttion(e.getMessage());
+            throw new IsoException(e.getMessage());
         }
     }
 

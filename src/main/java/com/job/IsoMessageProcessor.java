@@ -1,7 +1,7 @@
 package com.job;
 
 import com.iso.Iso8583Parser;
-import com.exception.IsoExcepttion;
+import com.exception.IsoException;
 import jakarta.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 //import org.springframework.batch.core.JobParameters;
@@ -37,7 +37,7 @@ public class IsoMessageProcessor implements ItemProcessor<String, String>, StepE
         Iso8583Parser iso8583Parser = new Iso8583Parser();
         try {
             return iso8583Parser.parse(item).toString();
-        } catch (IsoExcepttion e) {
+        } catch (IsoException e) {
             log.error("Error occurred while processing ISO 8583 message: {}", e.getMessage());
             return null;
         }

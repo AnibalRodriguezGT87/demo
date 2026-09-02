@@ -1,6 +1,6 @@
 package com.iso;
 
-import com.exception.IsoExcepttion;
+import com.exception.IsoException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class Iso8583ParserTest {
 
     @Test
-    void parse_shouldExtractPrimaryBitmapFields() throws IsoExcepttion {
+    void parse_shouldExtractPrimaryBitmapFields() throws IsoException {
         Iso8583Parser parser = new Iso8583Parser();
         String pan = "1234567890123456";
         String de7 = "0609173030";
@@ -30,7 +30,7 @@ public class Iso8583ParserTest {
     }
 
     @Test
-    void parse_shouldExtractSecondaryBitmapFields() throws IsoExcepttion {
+    void parse_shouldExtractSecondaryBitmapFields() throws IsoException {
         Iso8583Parser parser = new Iso8583Parser();
         String pan = "1234567890123456";
         String de127 = "1234567890123456789"; // 19 chars
@@ -54,7 +54,7 @@ public class Iso8583ParserTest {
     void parse_withMalformedMessage_throwsIsoException() {
         Iso8583Parser parser = new Iso8583Parser();
         // Message too short to contain bitmap -> parsing should fail
-        assertThrows(IsoExcepttion.class, () -> parser.parse("0100"));
+        assertThrows(IsoException.class, () -> parser.parse("0100"));
     }
 
     @Test
@@ -65,6 +65,6 @@ public class Iso8583ParserTest {
                 "4200000000000000" +
                 "16" + "12345" +
                 "0609173030";
-        assertThrows(IsoExcepttion.class, () -> parser.parse(input));
+        assertThrows(IsoException.class, () -> parser.parse(input));
     }
 }
