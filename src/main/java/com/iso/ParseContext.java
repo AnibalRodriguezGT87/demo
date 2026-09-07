@@ -57,7 +57,7 @@ public class ParseContext {
      *
      * @param mti the Message Type Indicator string to be logged
      */
-    public void logtMTI(String mti) {
+    public void logMTI(String mti) {
         log.info("MTI Log:");
         log.info("{} - {}", mti.charAt(0), getVersion(mti.charAt(0)));
         log.info("{} - {}", mti.charAt(1), getMessageClass(mti.charAt(1)));

@@ -45,7 +45,7 @@ public class Iso8583Parser {
 
             Map<Integer, String> dataElements = new LinkedHashMap<>();
             getDataElements(decodeMessage, bitmapBinary, parseContext.getIndex(), dataElements);
-            parseContext.logtMTI(mti);
+            parseContext.logMTI(mti);
             return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
         } catch (Exception e) {
             throw new IsoException(e.getMessage());

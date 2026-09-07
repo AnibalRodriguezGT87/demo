@@ -48,6 +48,13 @@
 			<artifactId>spring-batch-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.cccc_online.commons</groupId>
+			<artifactId>file-processing-commons</artifactId>
+			<version>1.0.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/file-processing-commons-1.0-SNAPSHOT.jar</systemPath>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
