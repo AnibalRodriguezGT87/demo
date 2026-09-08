@@ -1,6 +1,7 @@
 package com.config;
 
 import com.job.IsoMessageProcessor;
+import com.sftp.SftpLineReader;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -41,7 +42,7 @@ public class JobBatchConfigurationTest {
 
     @Test
     void step_buildsStepWithName() {
-        FlatFileItemReader<String> reader = mock(FlatFileItemReader.class);
+        SftpLineReader reader = mock(SftpLineReader.class);
         IsoMessageProcessor processor = mock(IsoMessageProcessor.class);
         FlatFileItemWriter<String> writer = mock(FlatFileItemWriter.class);
         JobRepository jobRepo = mock(JobRepository.class);

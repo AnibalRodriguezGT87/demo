@@ -1,6 +1,7 @@
 package com.config;
 
 import com.job.IsoMessageProcessor;
+import com.sftp.SftpLineReader;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -86,7 +87,7 @@ public class JobBatchConfiguration {
      * @return a Step instance
     */
     @Bean
-    public Step step(FlatFileItemReader<String> read,
+    public Step step(SftpLineReader read,
                      IsoMessageProcessor isoMessageProcessor,
                      FlatFileItemWriter<String> write,
                      JobRepository jobRepo,
