@@ -72,7 +72,7 @@ public class IsoMessageProcessor implements ItemProcessor<String, String>, StepE
         try {
             return iso8583Parser.parse(item).toString();
         } catch (IsoException e) {
-            log.error("Error occurred while processing ISO 8583 message: {}", e.getMessage());
+            log.error("Error occurred while processing ISO 8583 message: {}", e.getMessage(), e);
             return null;
         }
     }

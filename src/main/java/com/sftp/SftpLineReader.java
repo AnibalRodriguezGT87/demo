@@ -1,5 +1,6 @@
 package com.sftp;
 
+import com.exception.SftpException;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
@@ -23,28 +24,41 @@ public class SftpLineReader extends AbstractItemCountingItemStreamItemReader<Str
     }
 
     @Override
-    protected void doOpen() throws Exception {
-        SftpSession session = sessionFactory.getSession();
-        Path tempFile = Files.createTempFile("sftp-", ".csv");
-        try (OutputStream os = Files.newOutputStream(tempFile)) {
-            session.read("upload/data.csv", os);
+    protected void doOpen() throws SftpException {
+        try {
+
+            SftpSession session = sessionFactory.getSession();
+            Path tempFile = Files.createTempFile("sftp-", ".csv");
+            try (OutputStream os = Files.newOutputStream(tempFile)) {
+                session.read("upload/data.csv", os);
+            }
+            reader = Files.newBufferedReader(tempFile);
+        } catch (Exception e) {
+            throw new SftpException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
         }
-        reader = Files.newBufferedReader(tempFile);
     }
 
     @Override
-    protected String doRead() throws Exception {
-        if (reader == null) {
-            return null;
+    protected String doRead() throws SftpException {
+        try {
+            if (reader == null) {
+                return null;
+            }
+            return reader.readLine();
+        } catch (Exception e) {
+            throw new SftpException("Error occurred while reading from SFTP file:" + e.getMessage(), e);
         }
-        return reader.readLine();
     }
 
 
     @Override
-    protected void doClose() throws Exception {
+    protected void doClose() throws SftpException {
         if (reader != null) {
-            reader.close();
+            try {
+                reader.close();
+            } catch (Exception e) {
+                throw new SftpException("Error occurred while closing SFTP file reader:" + e.getMessage(), e);
+            }
         }
     }
 }

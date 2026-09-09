@@ -48,7 +48,7 @@ public class Iso8583Parser {
             parseContext.logMTI(mti);
             return new IsoMessage(mti, primaryBitmap, secondaryBitmap, dataElements);
         } catch (Exception e) {
-            throw new IsoException(e.getMessage());
+            throw new IsoException("Error occurred while parsing ISO 8583 message: " + e.getMessage(), e);
         }
 
     }
@@ -84,7 +84,7 @@ public class Iso8583Parser {
                 }
             }
         } catch (Exception e) {
-            throw new IsoException(e.getMessage());
+            throw new IsoException("Error occurred while extracting data elements from ISO 8583 message: " + e.getMessage(), e);
         }
     }
 

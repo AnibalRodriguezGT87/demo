@@ -110,6 +110,8 @@
 					<excludes>
 						<exclude>**/*Constants.class</exclude>
 						<exclude>**/*IsoTypeDataElementEnum.class</exclude>
+						<exclude>**/*IsoException.class</exclude>
+						<exclude>**/*SftpException.class</exclude>
 						<exclude>**/*IsoMessage.class</exclude>
 						<exclude>**/DemoApplication.class</exclude>
 					</excludes>
