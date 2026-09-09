@@ -6,9 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.iso.Constants.BITMAP_INDEX;
-import static com.iso.Constants.MTI_LENGTH;
-import static com.iso.Constants.FIXED_LENGTH_FIELDS;
+import static com.constants.Constants.BITMAP_INDEX;
+import static com.constants.Constants.MTI_LENGTH;
+import static com.constants.Constants.FIXED_LENGTH_FIELDS;
 
 
 /**

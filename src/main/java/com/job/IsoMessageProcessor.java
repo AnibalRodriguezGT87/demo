@@ -24,7 +24,6 @@ import org.springframework.stereotype.Component;
 public class IsoMessageProcessor implements ItemProcessor<String, String>, StepExecutionListener {
 
    /* private JobParameters jobParameters;
-
     @Override
     public void beforeStep(StepExecution stepExecution) {
         this.jobParameters = stepExecution.getJobParameters();
@@ -39,37 +38,8 @@ public class IsoMessageProcessor implements ItemProcessor<String, String>, StepE
     @Override
     public String process(@Nonnull String item) {
         //String fileName = jobParameters.getString("fileName");
-        Iso8583Parser iso8583Parser = new Iso8583Parser();
-        FileSchema schema = FileSchemaBuilder.create()
-
-                // Record identifier is located at index 0 with length 2 (e.g., "HR", "DR")
-                .withRecordTypeIdentifier(0, 2)
-
-                // Header Record Layout ("HR")
-                .addRecord("HR", "Header Record")
-                .addAlphaNumericField("recordType", 2)
-                .addNumericField("fileSequence", 6)
-                .addAlphaNumericField("creationDate", 8) // YYYYMMDD
-                .addFiller("reserved", 14)
-
-                // Detail Record Layout ("DR")
-                .addRecord("DR", "Detail Transaction Record")
-                .addAlphaNumericField("recordType", 2)
-                .addNumericField("accountNumber", 10)
-                .addNumericField("amountCents", 10)
-                .addAlphaNumericField("status", 1)
-                .addFiller("reserved", 7)
-                .build();
-        FixedLengthReader reader = new StandardFixedLengthReader(schema);
-        String rawLine = "DR00012345670000005000A       ";
-        int lineNumber = 1;
-
-        RecordData record = reader.readLine(rawLine, lineNumber);
-
-        System.out.println("Record Type: " + record.getRecordTypeCode()); // Output: DR
-        System.out.println("Account:     " + record.getValue("accountNumber")); // Output: 1234567
-        System.out.println("Amount:      " + record.getValue("amountCents"));
         try {
+            Iso8583Parser iso8583Parser = new Iso8583Parser();
             return iso8583Parser.parse(item).toString();
         } catch (IsoException e) {
             log.error("Error occurred while processing ISO 8583 message: {}", e.getMessage(), e);

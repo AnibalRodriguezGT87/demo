@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import static com.constants.Constants.*;
+
 /**
  * StartupRunner class is a CommandLineRunner that runs a Spring Batch job on application startup.
  * It takes command-line arguments as job parameters and launches the specified job.
@@ -46,6 +48,9 @@ public class StartupRunner implements CommandLineRunner {
                 builder.addString(parts[0], parts[1]);
             }
         }
+        builder.addString(REMOTE_DIRECTORY, "/upload");
+        builder.addString(FILE_NAME_OUTPUT, "outputParams.csv");
+        builder.addString(FILE_NAME_INPUT, "data.csv");
         log.info("Job started with parameters: {}", builder);
 
         jobLauncher.run(jobMaking, builder.toJobParameters());

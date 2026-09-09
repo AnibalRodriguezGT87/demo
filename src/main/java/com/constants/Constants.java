@@ -1,4 +1,7 @@
-package com.iso;
+package com.constants;
+
+import com.iso.IsoDefinition;
+import com.iso.IsoTypeDataElementEnum;
 
 import java.util.Map;
 
@@ -15,7 +18,10 @@ public class Constants {
             63, new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105 ,"Reserved Private"),
             127, new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105, "Private Use")
     );
-    public static final int MTI_LENGTH = 4;
 
+    public static final int MTI_LENGTH = 4;
     public static final int BITMAP_INDEX = 16;
+    public static final String REMOTE_DIRECTORY = "remoteDirectory";
+    public static final String FILE_NAME_OUTPUT = "fileNameOutput";
+    public static final String FILE_NAME_INPUT = "fileNameInput";
 }

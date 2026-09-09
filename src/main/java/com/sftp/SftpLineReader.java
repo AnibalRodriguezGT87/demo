@@ -15,22 +15,24 @@ import java.nio.file.Path;
 @Component
 @StepScope
 public class SftpLineReader extends AbstractItemCountingItemStreamItemReader<String> {
+
     private final DefaultSftpSessionFactory sessionFactory;
+    private final SftpProperties properties;
     private BufferedReader reader;
 
-    public SftpLineReader(DefaultSftpSessionFactory sessionFactory) {
+    public SftpLineReader(DefaultSftpSessionFactory sessionFactory, SftpProperties properties) {
         this.sessionFactory = sessionFactory;
+        this.properties = properties;
         setName("sftpLineReader");
     }
 
     @Override
     protected void doOpen() throws SftpException {
         try {
-
             SftpSession session = sessionFactory.getSession();
             Path tempFile = Files.createTempFile("sftp-", ".csv");
             try (OutputStream os = Files.newOutputStream(tempFile)) {
-                session.read("upload/data.csv", os);
+                session.read(properties.getRemoteInputFile(), os);
             }
             reader = Files.newBufferedReader(tempFile);
         } catch (Exception e) {

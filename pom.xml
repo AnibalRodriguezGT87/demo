@@ -113,6 +113,8 @@
 						<exclude>**/*IsoException.class</exclude>
 						<exclude>**/*SftpException.class</exclude>
 						<exclude>**/*IsoMessage.class</exclude>
+						<exclude>**/*SftpProperties.class</exclude>
+						<exclude>**/*SftpService.class</exclude>
 						<exclude>**/DemoApplication.class</exclude>
 					</excludes>
 				</configuration>

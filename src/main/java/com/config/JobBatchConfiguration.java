@@ -1,6 +1,8 @@
 package com.config;
 
+import com.csv.CsvLineReader;
 import com.job.IsoMessageProcessor;
+import com.sftp.SftpFileWriter;
 import com.sftp.SftpLineReader;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -8,13 +10,10 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.FlatFileItemWriter;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -25,22 +24,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 **/
 @Configuration
 public class JobBatchConfiguration {
-
-    /**
-     * This method defines a FlatFileItemReader bean that reads data from a CSV file.
-     * It skips the first line (header) and maps each line to a String.
-     *
-     * @return a FlatFileItemReader<String> instance
-    */
-    @Bean
-    public FlatFileItemReader<String> read() {
-        return new FlatFileItemReaderBuilder<String>()
-                .resource(new ClassPathResource("data.csv"))
-                .name("data-reader")
-                .linesToSkip(1)
-                .lineMapper((line, lineNumber) -> line)
-                .build();
-    }
 
     /**
      * This method defines a FlatFileItemWriter bean that writes data to an output file.
@@ -87,13 +70,11 @@ public class JobBatchConfiguration {
      * @return a Step instance
     */
     @Bean
-    public Step step(SftpLineReader read,
+    public Step step(CsvLineReader read,
                      IsoMessageProcessor isoMessageProcessor,
-                     FlatFileItemWriter<String> write,
+                     SftpFileWriter write,
                      JobRepository jobRepo,
                      PlatformTransactionManager transactionManager) {
-
-
         return new StepBuilder("making-step", jobRepo)
                 .<String, String>chunk(2, transactionManager)
                 .reader(read)

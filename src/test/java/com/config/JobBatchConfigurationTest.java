@@ -1,6 +1,8 @@
 package com.config;
 
+import com.csv.CsvLineReader;
 import com.job.IsoMessageProcessor;
+import com.sftp.SftpFileWriter;
 import com.sftp.SftpLineReader;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.Job;
@@ -16,13 +18,6 @@ import static org.mockito.Mockito.*;
 public class JobBatchConfigurationTest {
 
     private final JobBatchConfiguration config = new JobBatchConfiguration();
-
-    @Test
-    void read_createsReaderWithExpectedName() {
-        FlatFileItemReader<String> reader = config.read();
-        assertNotNull(reader);
-        assertEquals("data-reader", reader.getName());
-    }
 
     @Test
     void write_createsWriterWithExpectedName() {
@@ -42,9 +37,9 @@ public class JobBatchConfigurationTest {
 
     @Test
     void step_buildsStepWithName() {
-        SftpLineReader reader = mock(SftpLineReader.class);
+        CsvLineReader reader = mock(CsvLineReader.class);
         IsoMessageProcessor processor = mock(IsoMessageProcessor.class);
-        FlatFileItemWriter<String> writer = mock(FlatFileItemWriter.class);
+        SftpFileWriter writer = mock(SftpFileWriter.class);
         JobRepository jobRepo = mock(JobRepository.class);
         PlatformTransactionManager tx = mock(PlatformTransactionManager.class);
 
