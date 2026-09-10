@@ -1,6 +1,7 @@
 package com.config;
 
 import com.csv.CsvLineReader;
+import com.csv.CsvLineWriter;
 import com.job.IsoMessageProcessor;
 import com.sftp.SftpFileWriter;
 import com.sftp.SftpLineReader;
@@ -24,22 +25,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 **/
 @Configuration
 public class JobBatchConfiguration {
-
-    /**
-     * This method defines a FlatFileItemWriter bean that writes data to an output file.
-     * It specifies the file location and uses a line aggregator to write each item as a line in the file.
-     *
-     * @return a FlatFileItemWriter<String> instance
-    */
-    @Bean
-    public FlatFileItemWriter<String> write() {
-        String fileLocation = "src/main/resources/output.txt";
-        return  new FlatFileItemWriterBuilder<String>()
-                .name("output-writer")
-                .resource(new FileSystemResource(fileLocation))
-                .lineAggregator(item -> item)
-                .build();
-    }
 
     /**
      * This method defines a Job bean that represents the batch job.
@@ -72,7 +57,7 @@ public class JobBatchConfiguration {
     @Bean
     public Step step(CsvLineReader read,
                      IsoMessageProcessor isoMessageProcessor,
-                     SftpFileWriter write,
+                     CsvLineWriter write,
                      JobRepository jobRepo,
                      PlatformTransactionManager transactionManager) {
         return new StepBuilder("making-step", jobRepo)

@@ -49,7 +49,7 @@ public class StartupRunner implements CommandLineRunner {
             }
         }
         builder.addString(REMOTE_DIRECTORY, "/upload");
-        builder.addString(FILE_NAME_OUTPUT, "outputParams.csv");
+        builder.addString(FILE_NAME_OUTPUT, "output.csv");
         builder.addString(FILE_NAME_INPUT, "data.csv");
         log.info("Job started with parameters: {}", builder);
 
