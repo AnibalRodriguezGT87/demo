@@ -19,7 +19,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class SftpLineReaderTest {
+class SftpFileReaderTest {
 
     @Test
     void read_readsLinesFromRemoteFile() throws Exception {
@@ -36,7 +36,7 @@ class SftpLineReaderTest {
             return null;
         }).when(session).read(eq("upload/data.csv"), any(OutputStream.class));
 
-        SftpLineReader reader = new SftpLineReader(sessionFactory, properties);
+        SftpFileReader reader = new SftpFileReader(sessionFactory, properties);
         reader.open(new ExecutionContext());
 
         assertEquals("first line", reader.read());
@@ -53,7 +53,7 @@ class SftpLineReaderTest {
         properties.setRemoteInputFile("upload/data.csv");
         when(sessionFactory.getSession()).thenThrow(new RuntimeException("boom"));
 
-        SftpLineReader reader = new SftpLineReader(sessionFactory, properties);
+        SftpFileReader reader = new SftpFileReader(sessionFactory, properties);
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, () -> reader.open(new ExecutionContext()));
         assertTrue(exception.getCause() instanceof SftpException);

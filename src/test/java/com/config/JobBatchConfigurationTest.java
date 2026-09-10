@@ -1,8 +1,7 @@
 package com.config;
 
-import com.csv.CsvLineReader;
-import com.csv.CsvLineWriter;
 import com.job.IsoMessageProcessor;
+import com.sftp.SftpFileReader;
 import com.sftp.SftpFileWriter;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.Job;
@@ -28,9 +27,9 @@ public class JobBatchConfigurationTest {
 
     @Test
     void step_buildsStepWithName() {
-        CsvLineReader reader = mock(CsvLineReader.class);
+        SftpFileReader reader = mock(SftpFileReader.class);
         IsoMessageProcessor processor = mock(IsoMessageProcessor.class);
-        CsvLineWriter writer = mock(CsvLineWriter.class);
+        SftpFileWriter writer = mock(SftpFileWriter.class);
         JobRepository jobRepo = mock(JobRepository.class);
         PlatformTransactionManager tx = mock(PlatformTransactionManager.class);
 

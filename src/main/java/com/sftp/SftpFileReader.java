@@ -14,13 +14,13 @@ import java.nio.file.Path;
 
 @Component
 @StepScope
-public class SftpLineReader extends AbstractItemCountingItemStreamItemReader<String> {
+public class SftpFileReader extends AbstractItemCountingItemStreamItemReader<String> {
 
     private final DefaultSftpSessionFactory sessionFactory;
     private final SftpProperties properties;
     private BufferedReader reader;
 
-    public SftpLineReader(DefaultSftpSessionFactory sessionFactory, SftpProperties properties) {
+    public SftpFileReader(DefaultSftpSessionFactory sessionFactory, SftpProperties properties) {
         this.sessionFactory = sessionFactory;
         this.properties = properties;
         setName("sftpLineReader");

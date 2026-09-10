@@ -1,5 +1,6 @@
 package com.csv;
 
+import com.exception.ReaderException;
 import jakarta.annotation.Nonnull;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
@@ -25,21 +26,20 @@ public class CsvLineWriter implements ItemStreamWriter<String> {
     private BufferedWriter writer;
 
     @Override
-    public void write(Chunk<? extends String> chunk) throws ItemStreamException {
+    public void write(Chunk<? extends String> chunk) throws ReaderException {
         try {
             for (String item : chunk.getItems()) {
                 writer.write(item);
                 writer.newLine();
             }
-
             writer.flush();
         } catch (IOException e) {
-            throw new ItemStreamException("Error writing to file: " + fileName, e);
+            throw new ReaderException("Error writing to file: " + fileName, e);
         }
     }
 
     @Override
-    public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
+    public void open(@Nonnull ExecutionContext executionContext) throws ReaderException {
         try {
             Path path = Paths.get(fileName);
             if (path.getParent() != null) {
@@ -48,18 +48,18 @@ public class CsvLineWriter implements ItemStreamWriter<String> {
             writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         } catch (IOException e) {
-            throw new ItemStreamException("Error opening file: " + fileName, e);
+            throw new ReaderException("Error opening file: " + fileName, e);
         }
     }
 
     @Override
-    public void close() throws ItemStreamException {
+    public void close() throws ReaderException {
         try {
             if (writer != null) {
                 writer.close();
             }
         } catch (IOException e) {
-            throw new ItemStreamException("Error closing file", e);
+            throw new ReaderException("Error closing file", e);
         }
     }
 }

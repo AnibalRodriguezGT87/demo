@@ -22,6 +22,7 @@ public class SftpFileWriter implements ItemStreamWriter<String> {
     private ByteArrayOutputStream outputStream;
     private final SftpProperties properties;
     private SftpSession session;
+
     @Value("#{jobParameters['remoteDirectory']}")
     private String remoteDirectory;
     @Value("#{jobParameters['fileNameOutput']}")
@@ -58,9 +59,11 @@ public class SftpFileWriter implements ItemStreamWriter<String> {
     public void close() {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
-            //TODO properties.getRemoteInputFile() should be replaced with remoteDirectory + "/" +
-            // fileName if it is intended to write to a specific file in the remote directory
-            session.write(in, remoteDirectory + "/" + fileName);
+            if ( remoteDirectory != null && fileName != null) {
+                session.write(in, remoteDirectory + "/" + fileName);
+            } else {
+                session.write(in, properties.getRemoteOutputFile());
+            }
         } catch (Exception e) {
             throw new RuntimeException("Error closing SFTP writer", e);
         } finally {

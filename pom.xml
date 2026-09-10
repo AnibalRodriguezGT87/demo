@@ -112,6 +112,7 @@
 						<exclude>**/*IsoTypeDataElementEnum.class</exclude>
 						<exclude>**/*IsoException.class</exclude>
 						<exclude>**/*SftpException.class</exclude>
+						<exclude>**/*ReaderException.class</exclude>
 						<exclude>**/*IsoMessage.class</exclude>
 						<exclude>**/*SftpProperties.class</exclude>
 						<exclude>**/*SftpService.class</exclude>

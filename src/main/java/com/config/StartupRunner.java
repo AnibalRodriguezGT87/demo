@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import static com.constants.Constants.*;
+import static com.constants.Constants.FILE_NAME_INPUT;
+import static com.constants.Constants.FILE_NAME_OUTPUT;
+import static com.constants.Constants.REMOTE_DIRECTORY;
 
 /**
  * StartupRunner class is a CommandLineRunner that runs a Spring Batch job on application startup.
