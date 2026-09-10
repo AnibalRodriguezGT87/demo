@@ -42,9 +42,9 @@ public class JobBatchConfiguration {
      * It takes a FlatFileItemReader, TestProcessor, FlatFileItemWriter, JobRepository, and PlatformTransactionManager as parameters.
      * It configures the step with a name, chunk size, reader, processor, and writer.
      *
-     * @param read the FlatFileItemReader for reading data
+     * @param read the CsvLineReader for reading data
      * @param isoMessageProcessor the TestProcessor for processing data
-     * @param write the FlatFileItemWriter for writing data
+     * @param write the CsvLineWriter for writing data
      * @param jobRepo the JobRepository for managing job metadata
      * @param transactionManager the PlatformTransactionManager for managing transactions
      * @return a Step instance
