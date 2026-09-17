@@ -1,42 +1,29 @@
 package com.sftp;
 
+import com.exception.BatchReadException;
 import com.exception.SftpException;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
-import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
-import org.springframework.integration.sftp.session.SftpSession;
-
-import java.io.OutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SftpFileReaderTest {
 
     @Test
     void read_readsLinesFromRemoteFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteInputFile("upload/data.csv");
+        SftpService sftpService = mock(SftpService.class);
+        when(sftpService.getRowLine()).thenReturn("first line", "second line", null);
 
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        doAnswer(invocation -> {
-            OutputStream output = invocation.getArgument(1);
-            output.write("first line\nsecond line\n".getBytes());
-            return null;
-        }).when(session).read(eq("upload/data.csv"), any(OutputStream.class));
-
-        SftpFileReader reader = new SftpFileReader(sessionFactory, properties);
+        SftpFileReader reader = new SftpFileReader(sftpService);
         reader.open(new ExecutionContext());
 
         assertEquals("first line", reader.read());
@@ -44,19 +31,49 @@ class SftpFileReaderTest {
         assertNull(reader.read());
 
         reader.close();
+
+        verify(sftpService).openSftpSession();
+        verify(sftpService).readFile("upload/data.csv");
+        verify(sftpService, times(3)).getRowLine();
+        verify(sftpService).closeReader();
+        verify(sftpService).closeSession();
     }
 
     @Test
-    void open_throwsSftpException_whenSessionCannotBeCreated() {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteInputFile("upload/data.csv");
-        when(sessionFactory.getSession()).thenThrow(new RuntimeException("boom"));
+    void open_throwsItemStreamException_whenSessionCannotBeCreated() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        doThrow(new SftpException("Error occurred while opening SFTP connection:boom"))
+                .when(sftpService).openSftpSession();
 
-        SftpFileReader reader = new SftpFileReader(sessionFactory, properties);
+        SftpFileReader reader = new SftpFileReader(sftpService);
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, () -> reader.open(new ExecutionContext()));
-        assertTrue(exception.getCause() instanceof SftpException);
+        assertTrue(exception.getCause() instanceof BatchReadException);
         assertTrue(exception.getCause().getMessage().contains("Error occurred while opening SFTP connection"));
+    }
+
+    @Test
+    void read_throwsItemStreamException_whenReadFails() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        when(sftpService.getRowLine()).thenThrow(new SftpException("read boom"));
+
+        SftpFileReader reader = new SftpFileReader(sftpService);
+        reader.open(new ExecutionContext());
+
+        BatchReadException exception = assertThrows(BatchReadException.class, reader::read);
+        assertTrue(exception.getMessage().contains("Error occurred while reading from SFTP file"));
+    }
+
+    @Test
+    void close_throwsItemStreamException_whenCloseFails() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        doThrow(new SftpException("close boom")).when(sftpService).closeReader();
+
+        SftpFileReader reader = new SftpFileReader(sftpService);
+        reader.open(new ExecutionContext());
+
+        ItemStreamException exception = assertThrows(ItemStreamException.class, reader::close);
+        assertTrue(exception.getCause() instanceof BatchReadException);
+        assertTrue(exception.getCause().getMessage().contains("Error occurred while closing SFTP file reader"));
     }
 }

@@ -1,9 +1,9 @@
 package com.csv;
 
+import com.exception.ReaderException;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStreamException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.BufferedWriter;
@@ -35,24 +35,23 @@ class CsvLineWriterTest {
     }
 
     @Test
-    void open_throwsItemStreamException_whenPathIsDirectory() throws Exception {
+    void open_throwsReaderException_whenPathIsDirectory() throws Exception {
         CsvLineWriter writer = new CsvLineWriter();
         Path directory = Files.createTempDirectory("csv-writer-dir");
         ReflectionTestUtils.setField(writer, "fileName", directory.toString());
 
-        ItemStreamException exception = assertThrows(ItemStreamException.class, () -> writer.open(new ExecutionContext()));
-
+        ReaderException exception = assertThrows(ReaderException.class, () -> writer.open(new ExecutionContext()));
         assertTrue(exception.getMessage().contains("Error opening file"));
     }
 
     @Test
-    void write_throwsItemStreamException_whenWriterFails() throws Exception {
+    void write_throwsReaderException_whenWriterFails() throws Exception {
         CsvLineWriter writer = new CsvLineWriter();
         BufferedWriter failingWriter = mock(BufferedWriter.class);
         doThrow(new IOException("write failed")).when(failingWriter).write("alpha");
         ReflectionTestUtils.setField(writer, "writer", failingWriter);
 
-        ItemStreamException exception = assertThrows(ItemStreamException.class,
+        ReaderException exception = assertThrows(ReaderException.class,
                 () -> writer.write(new Chunk<>(List.of("alpha"))));
 
         assertTrue(exception.getMessage().contains("Error writing to file"));

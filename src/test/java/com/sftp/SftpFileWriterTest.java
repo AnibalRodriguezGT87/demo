@@ -1,62 +1,72 @@
 package com.sftp;
 
+import com.exception.BatchWriteException;
 import com.exception.SftpException;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ExecutionContext;
-import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
-import org.springframework.integration.sftp.session.SftpSession;
 
-import java.io.ByteArrayInputStream;
-import java.lang.reflect.Field;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentCaptor.forClass;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class SftpFileWriterTest {
 
     @Test
     void write_and_close_uploadFileToSftp() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpProperties properties = new SftpProperties();
-        SftpFileWriter writer = new SftpFileWriter(sessionFactory, properties);
-        setField(writer, "remoteDirectory", "/upload");
-        setField(writer, "fileName", "output.txt");
+        SftpService sftpService = mock(SftpService.class);
+        SftpFileWriter writer = new SftpFileWriter(sftpService);
 
         writer.open(new ExecutionContext());
         writer.write(new Chunk<>(List.of("first", "second")));
         writer.close();
 
-        org.mockito.ArgumentCaptor<ByteArrayInputStream> streamCaptor = forClass(ByteArrayInputStream.class);
-        verify(session).write(streamCaptor.capture(), eq("/upload/output.txt"));
-        assertEquals("first\nsecond\n", new String(streamCaptor.getValue().readAllBytes()));
-        verify(session).close();
+        verify(sftpService).openSftpSession();
+        verify(sftpService).setOutputStream();
+        verify(sftpService).setInputStream("first");
+        verify(sftpService).setInputStream("second");
+        verify(sftpService).writeSftpFile("upload", "output.csv");
+        verify(sftpService).closeSession();
     }
 
     @Test
-    void write_throwsSftpException_whenWriterWasNotOpened() {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpFileWriter writer = new SftpFileWriter(sessionFactory, new SftpProperties());
+    void write_throwsBatchWriteException_whenWriterWasNotOpened() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        doThrow(new SftpException("not open")).when(sftpService).setInputStream("line");
 
-        SftpException exception = assertThrows(SftpException.class, () ->
+        SftpFileWriter writer = new SftpFileWriter(sftpService);
+
+        BatchWriteException exception = assertThrows(BatchWriteException.class, () ->
                 writer.write(new Chunk<>(List.of("line"))));
 
         assertTrue(exception.getMessage().contains("Error writing to SFTP file"));
     }
 
-    private void setField(Object target, String fieldName, Object value) throws Exception {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
+    @Test
+    void open_throwsRuntimeException_whenSessionCannotBeCreated() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        doThrow(new SftpException("open boom")).when(sftpService).openSftpSession();
+
+        SftpFileWriter writer = new SftpFileWriter(sftpService);
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> writer.open(new ExecutionContext()));
+        assertTrue(exception.getMessage().contains("Error opening SFTP session"));
+    }
+
+    @Test
+    void close_throwsRuntimeException_whenUploadFails() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        doThrow(new SftpException("upload boom")).when(sftpService).writeSftpFile("upload", "output.csv");
+
+        SftpFileWriter writer = new SftpFileWriter(sftpService);
+        writer.open(new ExecutionContext());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, writer::close);
+        assertTrue(exception.getCause() instanceof SftpException);
+        assertTrue(exception.getCause().getMessage().contains("upload boom"));
     }
 }

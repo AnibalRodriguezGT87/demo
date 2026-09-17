@@ -1,6 +1,6 @@
 package com.csv;
 
-import com.exception.IsoException;
+import com.exception.ReaderException;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
@@ -47,18 +47,17 @@ class CsvLineReaderTest {
     }
 
     @Test
-    void open_throwsIsoException_whenFileDoesNotExist() {
+    void open_throwsItemStreamException_whenFileDoesNotExist() {
         CsvLineReader reader = new CsvLineReader();
         ReflectionTestUtils.setField(reader, "fileName", "missing-file.csv");
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, () -> reader.open(new ExecutionContext()));
-
-        assertTrue(exception.getCause() instanceof IsoException);
+        assertTrue(exception.getCause() instanceof ReaderException);
         assertTrue(exception.getCause().getMessage().contains("Error occurred while opening CSV file"));
     }
 
     @Test
-    void read_throwsItemStreamException_whenUnderlyingReaderFails() throws Exception {
+    void read_throwsReaderException_whenUnderlyingReaderFails() throws Exception {
         CsvLineReader reader = new CsvLineReader();
         BufferedReader failingReader = mock(BufferedReader.class);
         ReflectionTestUtils.setField(reader, "reader", failingReader);
@@ -66,8 +65,7 @@ class CsvLineReaderTest {
         java.io.IOException ioException = new IOException("boom");
         org.mockito.Mockito.when(failingReader.readLine()).thenThrow(ioException);
 
-        IsoException exception = assertThrows(IsoException.class, reader::read);
-
+        ReaderException exception = assertThrows(ReaderException.class, reader::read);
         assertTrue(exception.getMessage().contains("Error occurred while reading from CSV file"));
     }
 
@@ -79,8 +77,7 @@ class CsvLineReaderTest {
         ReflectionTestUtils.setField(reader, "reader", failingReader);
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, reader::close);
-
-        assertTrue(exception.getCause() instanceof IsoException);
+        assertTrue(exception.getCause() instanceof ReaderException);
         assertTrue(exception.getCause().getMessage().contains("Error occurred while closing CSV file"));
     }
 }

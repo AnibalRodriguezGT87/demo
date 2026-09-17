@@ -14,9 +14,14 @@
 	<groupId>com.example.4cs</groupId>
 	<artifactId>demo</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+	
 	<properties>
 		<java.version>25</java.version>
+		<bouncycastle.version>1.84</bouncycastle.version>
+		<file-processing-commons.version>1.0.0</file-processing-commons.version>
+		<jacoco.plugin.version>0.8.14</jacoco.plugin.version>
 	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -53,13 +58,24 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>${bouncycastle.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpg-jdk18on</artifactId>
+			<version>${bouncycastle.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>org.cccc_online.commons</groupId>
 			<artifactId>file-processing-commons</artifactId>
-			<version>1.0.0</version>
+			<version>${file-processing-commons.version}</version>
 			<scope>system</scope>
 			<systemPath>${project.basedir}/lib/file-processing-commons-1.0-SNAPSHOT.jar</systemPath>
 		</dependency>
 	</dependencies>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -105,17 +121,15 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.14</version>
+				<version>${jacoco.plugin.version}</version>
 				<configuration>
 					<excludes>
 						<exclude>**/*Constants.class</exclude>
 						<exclude>**/*IsoTypeDataElementEnum.class</exclude>
-						<exclude>**/*IsoException.class</exclude>
-						<exclude>**/*SftpException.class</exclude>
-						<exclude>**/*ReaderException.class</exclude>
+						<exclude>**/exception/**</exclude>
 						<exclude>**/*IsoMessage.class</exclude>
 						<exclude>**/*SftpProperties.class</exclude>
-						<exclude>**/*SftpService.class</exclude>
+						<exclude>**/*SftpConfigService.class</exclude>
 						<exclude>**/DemoApplication.class</exclude>
 					</excludes>
 				</configuration>

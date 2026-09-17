@@ -1,75 +1,54 @@
 package com.sftp;
 
+import com.exception.BatchWriteException;
 import com.exception.SftpException;
 import jakarta.annotation.Nonnull;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamWriter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
-import org.springframework.integration.sftp.session.SftpSession;
 import org.springframework.stereotype.Component;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 
 @Component
 @StepScope
 public class SftpFileWriter implements ItemStreamWriter<String> {
 
-    private final DefaultSftpSessionFactory sessionFactory;
-    private ByteArrayOutputStream outputStream;
-    private final SftpProperties properties;
-    private SftpSession session;
+    private final SftpService sftpService;
 
-    @Value("#{jobParameters['remoteDirectory']}")
-    private String remoteDirectory;
-    @Value("#{jobParameters['fileNameOutput']}")
-    private String fileName;
-
-    public SftpFileWriter(DefaultSftpSessionFactory sessionFactory, SftpProperties properties) {
-        this.sessionFactory = sessionFactory;
-        this.properties = properties;
+    public SftpFileWriter(SftpService sftpService) {
+        this.sftpService = sftpService;
     }
 
     @Override
     public void open(@Nonnull ExecutionContext executionContext)  {
         try {
-            session = sessionFactory.getSession();
-            outputStream = new ByteArrayOutputStream();
+            sftpService.openSftpSession();
+            sftpService.setOutputStream();
         } catch (Exception e) {
             throw new RuntimeException("Error opening SFTP session", e);
         }
     }
 
     @Override
-    public void write(@Nonnull Chunk<? extends String> chunk) throws SftpException {
+    public void write(@Nonnull Chunk<? extends String> chunk) throws BatchWriteException {
         try {
             for (String line : chunk.getItems()) {
-                outputStream.write(line.getBytes());
-                outputStream.write('\n');
+                sftpService.setInputStream(line);
             }
         } catch (Exception e) {
-            throw new SftpException("Error writing to SFTP file", e);
+            throw new BatchWriteException("Error writing to SFTP file", e);
         }
     }
 
     @Override
     public void close() {
         try {
-            ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
-            if ( remoteDirectory != null && fileName != null) {
-                session.write(in, remoteDirectory + "/" + fileName);
-            } else {
-                session.write(in, properties.getRemoteOutputFile());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Error closing SFTP writer", e);
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+            String remoteDirectory = "upload";
+            String fileName = "output.csv";
+            sftpService.writeSftpFile(remoteDirectory, fileName);
+            sftpService.closeSession();
+        } catch (SftpException e) {
+            throw new RuntimeException(e);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -8,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+
+import java.security.Security;
 
 import static com.constants.Constants.FILE_NAME_INPUT;
 import static com.constants.Constants.FILE_NAME_OUTPUT;
@@ -43,6 +46,7 @@ public class StartupRunner implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
         JobParametersBuilder builder = new JobParametersBuilder();
         for (String arg : args) {
             String[] parts = arg.split("=", 2);
