@@ -29,7 +29,6 @@ public class SftpConfigService {
         factory.setPort(properties.getPort());
         factory.setUser(properties.getUsername());
         factory.setPassword(properties.getPassword());
-        //factory.setPrivateKey(new FileSystemResource("/keys/id_rsa"));
         factory.setAllowUnknownKeys(true);
 
         return factory;

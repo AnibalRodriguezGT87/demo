@@ -31,7 +31,7 @@ class Iso8583MessageReaderTest {
         reader.close();
 
         verify(sftpService).openSftpSession();
-        verify(sftpService).readDecryptedFile("upload/data.csv.gpg");
+        verify(sftpService).readFirstFile("upload", true);
         verify(sftpService, times(3)).getRowLine();
         verify(sftpService).closeReader();
         verify(sftpService).closeSession();

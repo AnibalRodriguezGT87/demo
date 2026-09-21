@@ -19,7 +19,7 @@ public class SftpProperties {
     private int port;
     private String username;
     private String password;
-    private String encryptedFileExtension = ".gpg";
+    private String fileExtension = ".gpg";
     private String tempFileExtension = ".txt";
 
 }

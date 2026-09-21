@@ -55,19 +55,24 @@ public class SftpService {
     }
 
     /**
-     * Reads a PGP-encrypted file from the SFTP server, decrypts it, and stores it in a temporary file.
+     * Reads a file from the SFTP server. If the file is encrypted, it will be decrypted before reading.
      *
-     * @param inputFile the path to the input file on the SFTP server
+     * @param inputFile   the path to the input file on the SFTP server
+     * @param isEncrypted a boolean indicating whether the file is encrypted
      * @throws SftpException if an error occurs while reading or decrypting the file
      */
-    public void readDecryptedFile(String inputFile) throws SftpException {
+    public void readFile(String inputFile, boolean isEncrypted) throws SftpException {
         try {
-            Path encryptedFile = Files.createTempFile("sftp-", properties.getEncryptedFileExtension());
-            try (OutputStream os = Files.newOutputStream(encryptedFile)) {
+            Path tempFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
+            try (OutputStream os = Files.newOutputStream(tempFile)) {
                 session.read(inputFile, os);
             }
 
-            InputStream encryptedInput = Files.newInputStream(encryptedFile);
+            if (!isEncrypted) {
+                reader = Files.newBufferedReader(tempFile);
+                return;
+            }
+            InputStream encryptedInput = Files.newInputStream(tempFile);
             InputStream privateKey = new ClassPathResource(pgpProperties.getPrivateKey()).getInputStream();
             InputStream decryptedInput = pgpService.decrypt(encryptedInput, privateKey, pgpProperties.getPassphrase());
 
@@ -81,65 +86,32 @@ public class SftpService {
     }
 
     /**
-     * Reads a file from the SFTP server and stores it in a temporary file.
+     * Reads the first file in the specified remote directory that matches the encrypted file extension.
+     * If the file is encrypted, it will be decrypted before reading.
      *
-     * @param inputFile the path to the input file on the SFTP server
-     * @throws SftpException if an error occurs while reading the file
+     * @param remoteDirectory the path to the remote directory on the SFTP server
+     * @param isEncrypted     a boolean indicating whether the file is encrypted
+     * @throws SftpException if an error occurs while listing files or reading the file
      */
-    public void readFile(String inputFile) throws SftpException {
+    public void readFirstFile(String remoteDirectory, boolean isEncrypted) throws SftpException {
         try {
-            Path tempFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
-            try (OutputStream os = Files.newOutputStream(tempFile)) {
-                session.read(inputFile, os);
-            }
-            reader = Files.newBufferedReader(tempFile);
-        } catch (Exception e) {
-            throw new SftpException("Error occurred reading file:" + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Reads the first PGP-encrypted file from the specified remote directory, decrypts it, and stores it in a temporary file.
-     *
-     * @throws SftpException if an error occurs while reading or decrypting the file
-     */
-    public void  readFirstDecryptedFile(String remoteDirectory) throws SftpException {
-        try {
-            final String encryptedExtension = Optional.ofNullable(properties.getEncryptedFileExtension())
+            final String expectedExtension = Optional.ofNullable(properties.getFileExtension())
                     .filter(ext -> !ext.isBlank())
                     .orElse(".gpg");
 
             String fileName = Arrays.stream(session.list(remoteDirectory))
                     .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name != null && (name.endsWith(encryptedExtension)
-                            || name.endsWith(".gpg")
-                            || name.endsWith(".pgp")))
+                    .filter(name -> name != null && !name.isBlank())
+                    .filter(name -> !isEncrypted || name.endsWith(expectedExtension)
+                            || name.endsWith(".gpg") || name.endsWith(".pgp"))
                     .findFirst()
                     .orElseThrow();
-            readDecryptedFile(remoteDirectory + "/" + fileName);
+            readFile(remoteDirectory + "/" + fileName, isEncrypted);
         } catch (Exception e) {
             throw new SftpException("Error occurred while listing files in remote directory:" + e.getMessage(), e);
         }
     }
 
-    /**
-     * Reads the first file from the specified remote directory and stores it in a temporary file.
-     *
-     * @param remoteDirectory the path to the remote directory
-     * @throws SftpException if an error occurs while reading the file
-     */
-    public void readFirstFile(String remoteDirectory) throws SftpException {
-        try {
-            String fileName = Arrays.stream(session.list(remoteDirectory))
-                    .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name != null && !name.isBlank())
-                    .findFirst()
-                    .orElseThrow();
-            readFile(remoteDirectory + "/" + fileName);
-        } catch (Exception e) {
-            throw new SftpException("Error occurred while listing files in remote directory:" + e.getMessage(), e);
-        }
-    }
 
     /**
      * Initializes the output stream for writing data to the SFTP server.
