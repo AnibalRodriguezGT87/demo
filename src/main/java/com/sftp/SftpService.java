@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.Optional;
 
 /**
  * Service class for handling SFTP operations, including reading and writing files,
@@ -54,6 +53,14 @@ public class SftpService {
         }
     }
 
+    public void readFile(String inputFile) throws SftpException {
+        readFile(inputFile, false);
+    }
+
+    public void readDecryptedFile(String inputFile) throws SftpException {
+        readFile(inputFile, true);
+    }
+
     /**
      * Reads a file from the SFTP server. If the file is encrypted, it will be decrypted before reading.
      *
@@ -85,6 +92,14 @@ public class SftpService {
         }
     }
 
+    public void readFirstFile(String remoteDirectory) throws SftpException {
+        readFirstFile(remoteDirectory, false);
+    }
+
+    public void readFirstDecryptedFile(String remoteDirectory) throws SftpException {
+        readFirstFile(remoteDirectory, true);
+    }
+
     /**
      * Reads the first file in the specified remote directory that matches the encrypted file extension.
      * If the file is encrypted, it will be decrypted before reading.
@@ -95,15 +110,15 @@ public class SftpService {
      */
     public void readFirstFile(String remoteDirectory, boolean isEncrypted) throws SftpException {
         try {
-            final String expectedExtension = Optional.ofNullable(properties.getFileExtension())
+            final String expectedExtension = java.util.Optional.ofNullable(properties.getFileExtension())
                     .filter(ext -> !ext.isBlank())
                     .orElse(".gpg");
 
             String fileName = Arrays.stream(session.list(remoteDirectory))
                     .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name != null && !name.isBlank())
-                    .filter(name -> !isEncrypted || name.endsWith(expectedExtension)
-                            || name.endsWith(".gpg") || name.endsWith(".pgp"))
+                    .filter(name -> name != null
+                            && !name.isBlank()
+                            && (!isEncrypted || name.endsWith(expectedExtension)))
                     .findFirst()
                     .orElseThrow();
             readFile(remoteDirectory + "/" + fileName, isEncrypted);

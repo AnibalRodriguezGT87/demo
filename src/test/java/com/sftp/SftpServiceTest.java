@@ -68,7 +68,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
-        service.readFile("upload/data.csv", false);
+        service.readFile("upload/data.csv");
 
         assertEquals("first", service.getRowLine());
         assertEquals("second", service.getRowLine());
@@ -102,7 +102,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readFile("upload/data.pgp", true);
+        service.readDecryptedFile("upload/data.pgp");
 
         assertEquals("plain", service.getRowLine());
         assertEquals("line", service.getRowLine());
@@ -131,7 +131,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
-        service.readFirstFile("/upload", false);
+        service.readFirstFile("/upload");
 
         assertEquals("first", service.getRowLine());
         service.closeReader();
@@ -167,7 +167,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readFirstFile("/upload", true);
+        service.readFirstDecryptedFile("/upload");
 
         assertEquals("secret", service.getRowLine());
         service.closeReader();
@@ -217,7 +217,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
-        service.readFile("upload/data.csv", false);
+        service.readFile("upload/data.csv");
 
         BufferedReader mockedReader = mock(BufferedReader.class);
         doThrow(new RuntimeException("close boom")).when(mockedReader).close();
@@ -253,7 +253,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload", false));
+        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload"));
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
@@ -269,7 +269,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload", true));
+        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstDecryptedFile("/upload"));
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
@@ -285,7 +285,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload", false));
+        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload"));
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
@@ -309,7 +309,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstFile("/upload", true));
+        SftpException exception = assertThrows(SftpException.class, () -> service.readFirstDecryptedFile("/upload"));
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
