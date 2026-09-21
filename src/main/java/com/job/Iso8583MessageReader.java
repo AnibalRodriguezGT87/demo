@@ -1,17 +1,18 @@
-package com.sftp;
+package com.job;
 
 import com.exception.BatchReadException;
+import com.sftp.SftpService;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.support.AbstractItemCountingItemStreamItemReader;
 import org.springframework.stereotype.Component;
 
 @Component
 @StepScope
-public class SftpFileReader extends AbstractItemCountingItemStreamItemReader<String> {
+public class Iso8583MessageReader extends AbstractItemCountingItemStreamItemReader<String> {
 
     private final SftpService sftpService;
 
-    public SftpFileReader(SftpService sftpService) {
+    public Iso8583MessageReader(SftpService sftpService) {
         this.sftpService = sftpService;
         setName("sftpLineReader");
     }
@@ -35,7 +36,6 @@ public class SftpFileReader extends AbstractItemCountingItemStreamItemReader<Str
             throw new BatchReadException("Error occurred while reading from SFTP file:" + e.getMessage(), e);
         }
     }
-
 
     @Override
     protected void doClose() throws BatchReadException {

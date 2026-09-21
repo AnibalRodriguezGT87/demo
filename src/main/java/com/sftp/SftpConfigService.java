@@ -2,7 +2,6 @@ package com.sftp;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 
 @Configuration
@@ -21,7 +20,7 @@ public class SftpConfigService {
         factory.setPort(properties.getPort());
         factory.setUser(properties.getUsername());
         factory.setPassword(properties.getPassword());
-        factory.setPrivateKey(new FileSystemResource("/keys/id_rsa"));
+        //factory.setPrivateKey(new FileSystemResource("/keys/id_rsa"));
         factory.setAllowUnknownKeys(true);
 
         return factory;

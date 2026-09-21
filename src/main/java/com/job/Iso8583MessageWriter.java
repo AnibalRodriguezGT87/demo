@@ -1,7 +1,8 @@
-package com.sftp;
+package com.job;
 
 import com.exception.BatchWriteException;
 import com.exception.SftpException;
+import com.sftp.SftpService;
 import jakarta.annotation.Nonnull;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
@@ -11,11 +12,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @StepScope
-public class SftpFileWriter implements ItemStreamWriter<String> {
+public class Iso8583MessageWriter implements ItemStreamWriter<String> {
 
     private final SftpService sftpService;
 
-    public SftpFileWriter(SftpService sftpService) {
+    public Iso8583MessageWriter(SftpService sftpService) {
         this.sftpService = sftpService;
     }
 

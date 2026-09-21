@@ -8,7 +8,7 @@ public class TestProcessorIsoMessage {
 
     @Test
     void process_withOnlyPrimaryBitmap_returnsParsedMessageString() {
-        IsoMessageProcessor processor = new IsoMessageProcessor();
+        Iso8583MessageProcessor processor = new Iso8583MessageProcessor();
         // MTI(4) + primary bitmap(16) only with bits for DE2 and DE7 set -> hex starts with 42
         String input = "0100" +
                 "4200000000000000" + // primary bitmap: bits 2 and 7 set
@@ -26,7 +26,7 @@ public class TestProcessorIsoMessage {
 
     @Test
     void process_withSecondBitmap_returnsParsedMessageString() {
-        IsoMessageProcessor processor = new IsoMessageProcessor();
+        Iso8583MessageProcessor processor = new Iso8583MessageProcessor();
         // MTI + primary bitmap indicating secondary present (first bit 1) and DE2 set -> C0...
         // secondary bitmap sets DE127 (using 0000000000000002 in tests)
         String pan = "1234567890123456";

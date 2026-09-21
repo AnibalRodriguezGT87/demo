@@ -70,9 +70,9 @@
 		<dependency>
 			<groupId>org.cccc_online.commons</groupId>
 			<artifactId>file-processing-commons</artifactId>
-			<version>${file-processing-commons.version}</version>
+			<version>1.0.1</version>
 			<scope>system</scope>
-			<systemPath>${project.basedir}/lib/file-processing-commons-1.0-SNAPSHOT.jar</systemPath>
+			<systemPath>${project.basedir}/lib/file-processing-commons-1.0.1-SNAPSHOT.jar</systemPath>
 		</dependency>
 	</dependencies>
 

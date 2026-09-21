@@ -1,8 +1,8 @@
 package com.config;
 
-import com.job.IsoMessageProcessor;
-import com.sftp.SftpFileReader;
-import com.sftp.SftpFileWriter;
+import com.job.Iso8583MessageProcessor;
+import com.job.Iso8583MessageReader;
+import com.job.Iso8583MessageWriter;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -42,23 +42,23 @@ public class JobBatchConfiguration {
      * It takes a FlatFileItemReader, TestProcessor, FlatFileItemWriter, JobRepository, and PlatformTransactionManager as parameters.
      * It configures the step with a name, chunk size, reader, processor, and writer.
      *
-     * @param read the SftpFileReader for reading data
-     * @param isoMessageProcessor the IsoMessageProcessor for processing data
-     * @param write the SftpFileWriter for writing data
+     * @param read the Iso8583MessageReader for reading data
+     * @param iso8583MessageProcessor the Iso8583MessageProcessor for processing data
+     * @param write the Iso8583MessageWriter for writing data
      * @param jobRepo the JobRepository for managing job metadata
      * @param transactionManager the PlatformTransactionManager for managing transactions
      * @return a Step instance
     */
     @Bean
-    public Step step(SftpFileReader read,
-                     IsoMessageProcessor isoMessageProcessor,
-                     SftpFileWriter write,
+    public Step step(Iso8583MessageReader read,
+                     Iso8583MessageProcessor iso8583MessageProcessor,
+                     Iso8583MessageWriter write,
                      JobRepository jobRepo,
                      PlatformTransactionManager transactionManager) {
         return new StepBuilder("making-step", jobRepo)
                 .<String, String>chunk(2, transactionManager)
                 .reader(read)
-                .processor(isoMessageProcessor)
+                .processor(iso8583MessageProcessor)
                 .writer(write)
                 .build();
     }

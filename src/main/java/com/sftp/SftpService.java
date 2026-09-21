@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Service class for handling SFTP operations, including reading and writing files,
@@ -100,15 +101,19 @@ public class SftpService {
     /**
      * Reads the first PGP-encrypted file from the specified remote directory, decrypts it, and stores it in a temporary file.
      *
-     * @param remoteDirectory the path to the remote directory
-     * @param extension       the file extension to filter by
      * @throws SftpException if an error occurs while reading or decrypting the file
      */
-    public void  readFirstDecryptedFile(String remoteDirectory, String extension) throws SftpException {
+    public void  readFirstDecryptedFile(String remoteDirectory) throws SftpException {
         try {
+            final String encryptedExtension = Optional.ofNullable(properties.getEncryptedFileExtension())
+                    .filter(ext -> !ext.isBlank())
+                    .orElse(".gpg");
+
             String fileName = Arrays.stream(session.list(remoteDirectory))
                     .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name.endsWith(extension))
+                    .filter(name -> name != null && (name.endsWith(encryptedExtension)
+                            || name.endsWith(".gpg")
+                            || name.endsWith(".pgp")))
                     .findFirst()
                     .orElseThrow();
             readDecryptedFile(remoteDirectory + "/" + fileName);
@@ -121,14 +126,13 @@ public class SftpService {
      * Reads the first file from the specified remote directory and stores it in a temporary file.
      *
      * @param remoteDirectory the path to the remote directory
-     * @param extension       the file extension to filter by
      * @throws SftpException if an error occurs while reading the file
      */
-    public void readFirstFile(String remoteDirectory, String extension) throws SftpException {
+    public void readFirstFile(String remoteDirectory) throws SftpException {
         try {
             String fileName = Arrays.stream(session.list(remoteDirectory))
                     .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name.endsWith(extension))
+                    .filter(name -> name != null && !name.isBlank())
                     .findFirst()
                     .orElseThrow();
             readFile(remoteDirectory + "/" + fileName);
@@ -152,7 +156,7 @@ public class SftpService {
      */
     public void setInputStream(String binaryData) throws SftpException {
         try {
-            outputStream.write(binaryData.getBytes());;
+            outputStream.write(binaryData.getBytes());
             outputStream.write('\n');
         } catch (Exception e) {
             throw new SftpException("Error writing to SFTP file", e);
@@ -176,9 +180,9 @@ public class SftpService {
     }
 
     /**
-     * Returns the BufferedReader used to read the decrypted file.
+     * Returns the currently opened BufferedReader for reading from the SFTP file.
      *
-     * @return the BufferedReader for reading the decrypted file
+     * @return the BufferedReader for reading from the SFTP file
      */
     public BufferedReader getBufferedReader() {
         return reader;

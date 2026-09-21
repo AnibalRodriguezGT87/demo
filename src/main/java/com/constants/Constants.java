@@ -24,4 +24,5 @@ public class Constants {
     public static final String REMOTE_DIRECTORY = "remoteDirectory";
     public static final String FILE_NAME_OUTPUT = "fileNameOutput";
     public static final String FILE_NAME_INPUT = "fileNameInput";
+
 }
