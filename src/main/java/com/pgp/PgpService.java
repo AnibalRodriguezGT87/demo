@@ -1,6 +1,7 @@
 package com.pgp;
 
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openpgp.*;
 import org.bouncycastle.openpgp.operator.PublicKeyDataDecryptorFactory;
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.security.Security;
 import java.util.Iterator;
 
 /**
@@ -20,6 +22,12 @@ import java.util.Iterator;
 @Service
 @Slf4j
 public class PgpService {
+
+    static {
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     /**
      * Decrypts the given PGP encrypted input stream using the provided private key and passphrase.
@@ -44,12 +52,20 @@ public class PgpService {
 
         Object obj = pgpFactory.nextObject();
 
+        if (obj == null) {
+            throw new IllegalStateException("No encrypted data found in PGP message");
+        }
+
         PGPEncryptedDataList encryptedDataList;
 
         if (obj instanceof PGPEncryptedDataList) {
             encryptedDataList = (PGPEncryptedDataList) obj;
         } else {
-            encryptedDataList = (PGPEncryptedDataList) pgpFactory.nextObject();
+            Object nextObject = pgpFactory.nextObject();
+            if (!(nextObject instanceof PGPEncryptedDataList)) {
+                throw new IllegalStateException("No encrypted data list found in PGP message");
+            }
+            encryptedDataList = (PGPEncryptedDataList) nextObject;
         }
 
         PGPPublicKeyEncryptedData encryptedData = null;
