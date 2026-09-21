@@ -13,10 +13,23 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Iterator;
 
+/**
+ * PgpService class provides functionality to decrypt PGP encrypted data using a private key and passphrase.
+ * It uses Bouncy Castle library for PGP operations.
+ */
 @Service
 @Slf4j
 public class PgpService {
 
+    /**
+     * Decrypts the given PGP encrypted input stream using the provided private key and passphrase.
+     *
+     * @param encryptedStream  InputStream containing the PGP encrypted data
+     * @param privateKeyStream InputStream containing the PGP private key
+     * @param passphrase       Passphrase for the private key
+     * @return InputStream containing the decrypted data
+     * @throws Exception if decryption fails or no matching private key is found
+     */
     public InputStream decrypt(InputStream encryptedStream, InputStream privateKeyStream, String passphrase) throws Exception {
 
         PGPSecretKeyRingCollection secretKeyRings =
@@ -46,8 +59,8 @@ public class PgpService {
 
         while (iterator.hasNext()) {
             PGPPublicKeyEncryptedData current = (PGPPublicKeyEncryptedData) iterator.next();
-            log.info( "Encrypted Key ID: {}", Long.toHexString(current.getKeyID()));
-            PGPSecretKey secretKey = secretKeyRings.getSecretKey(current.getKeyID());
+            log.info( "Encrypted Key ID: {}", Long.toHexString(current.getKeyIdentifier().getKeyId()));
+            PGPSecretKey secretKey = secretKeyRings.getSecretKey(current.getKeyIdentifier().getKeyId());
 
             if (secretKey != null) {
                 log.info("Matched Secret Key ID: {}", Long.toHexString(secretKey.getKeyID()));

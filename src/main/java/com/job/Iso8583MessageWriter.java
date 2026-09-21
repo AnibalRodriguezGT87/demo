@@ -10,6 +10,11 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamWriter;
 import org.springframework.stereotype.Component;
 
+/**
+ * Iso8583MessageWriter is a Spring Batch ItemStreamWriter that writes ISO 8583 messages to an SFTP server.
+ * It uses the SftpService to establish a connection, write data to a file, and manage the SFTP session.
+ * The writer is step-scoped, meaning it is created and managed within the context of a specific step execution.
+ */
 @Component
 @StepScope
 public class Iso8583MessageWriter implements ItemStreamWriter<String> {
@@ -20,6 +25,11 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
         this.sftpService = sftpService;
     }
 
+    /**
+     * Opens the SFTP connection and prepares to write data to the output file.
+     *
+     * @param executionContext the execution context for the current step
+     */
     @Override
     public void open(@Nonnull ExecutionContext executionContext)  {
         try {
@@ -30,6 +40,12 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
         }
     }
 
+    /**
+     * Writes a chunk of ISO 8583 messages to the SFTP file.
+     *
+     * @param chunk the chunk of items to be written
+     * @throws BatchWriteException if an error occurs while writing to the SFTP file
+     */
     @Override
     public void write(@Nonnull Chunk<? extends String> chunk) throws BatchWriteException {
         try {
@@ -41,6 +57,9 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
         }
     }
 
+    /**
+     * Closes the SFTP connection and the file writer.
+     */
     @Override
     public void close() {
         try {

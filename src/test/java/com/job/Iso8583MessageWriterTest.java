@@ -1,8 +1,8 @@
-package com.sftp;
+package com.job;
 
 import com.exception.BatchWriteException;
 import com.exception.SftpException;
-import com.job.Iso8583MessageWriter;
+import com.sftp.SftpService;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ExecutionContext;

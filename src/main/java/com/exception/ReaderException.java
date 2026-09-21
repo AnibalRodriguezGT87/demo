@@ -1,13 +1,11 @@
 package com.exception;
 
+/**
+ * ReaderException is a custom exception class that represents errors occurring during reading operations.
+ * It extends the standard RuntimeException class and provides constructors for creating instances with a message and an optional cause.
+ */
 public class ReaderException extends RuntimeException {
 
-    /**
-     * @param message the String that contains a detailed message.
-     */
-    public ReaderException(String message) {
-        super(message);
-    }
 
     /**
      * Constructs a new instance with a message and nested exception.
@@ -19,11 +17,4 @@ public class ReaderException extends RuntimeException {
         super(msg, nested);
     }
 
-    /**
-     * Constructs a new instance with a nested exception and empty message.
-     * @param nested the cause of the exception.
-     */
-    public ReaderException(Throwable nested) {
-        super(nested);
-    }
 }

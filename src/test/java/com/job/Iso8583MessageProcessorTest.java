@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestProcessorIsoMessage {
+public class Iso8583MessageProcessorTest {
 
     @Test
     void process_withOnlyPrimaryBitmap_returnsParsedMessageString() {

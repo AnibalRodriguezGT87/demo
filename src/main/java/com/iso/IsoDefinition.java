@@ -16,6 +16,13 @@ public class IsoDefinition {
     private int lengthDefinition;
     private String name;
 
+    /**
+     * Constructs an IsoDefinition with the specified type, length, and name.
+     *
+     * @param typeDataElement the type of the ISO data element
+     * @param lengthDefinition the length definition of the ISO data element
+     * @param name the name of the ISO data element
+     */
     public IsoDefinition(IsoTypeDataElementEnum typeDataElement, int lengthDefinition,  String name) {
         this.typeDataElement = typeDataElement;
         this.lengthDefinition = lengthDefinition;

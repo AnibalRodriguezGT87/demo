@@ -13,9 +13,10 @@ import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-/**
- * TestProcessor class implements the ItemProcessor interface to process ISO 8583 messages.
- * It also implements StepExecutionListener to listen to step execution events.
+/*
+ * Iso8583MessageProcessor is a Spring Batch ItemProcessor that processes ISO 8583 messages.
+ * It reads and parses the input ISO 8583 message, extracts relevant fields, and returns a string representation of the parsed message.
+ * The processor also implements StepExecutionListener to provide additional functionality during step execution.
  */
 @Component
 @Slf4j
