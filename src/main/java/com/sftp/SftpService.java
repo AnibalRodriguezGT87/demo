@@ -207,6 +207,11 @@ public class SftpService {
         }
     }
 
+    /**
+     * Closes the currently opened SFTP session.
+     *
+     * @throws SftpException if an error occurs while closing the session
+     */
     public void closeSession() throws SftpException {
         try {
             if (session != null) {
