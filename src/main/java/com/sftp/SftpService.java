@@ -68,7 +68,7 @@ public class SftpService {
      * @param isEncrypted a boolean indicating whether the file is encrypted
      * @throws SftpException if an error occurs while reading or decrypting the file
      */
-    public void readFile(String inputFile, boolean isEncrypted) throws SftpException {
+    private void readFile(String inputFile, boolean isEncrypted) throws SftpException {
         try {
             Path tempFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
             try (OutputStream os = Files.newOutputStream(tempFile)) {
@@ -108,7 +108,7 @@ public class SftpService {
      * @param isEncrypted     a boolean indicating whether the file is encrypted
      * @throws SftpException if an error occurs while listing files or reading the file
      */
-    public void readFirstFile(String remoteDirectory, boolean isEncrypted) throws SftpException {
+    private void readFirstFile(String remoteDirectory, boolean isEncrypted) throws SftpException {
         try {
             final String expectedExtension = java.util.Optional.ofNullable(properties.getFileExtension())
                     .filter(ext -> !ext.isBlank())
