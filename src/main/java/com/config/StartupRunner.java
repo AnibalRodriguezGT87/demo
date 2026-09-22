@@ -5,8 +5,9 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import static com.constants.Constants.FILE_NAME_INPUT;
@@ -24,14 +25,14 @@ public class StartupRunner implements CommandLineRunner {
     @Autowired
     private final JobLauncher jobLauncher;
 
-    @Qualifier("jobMaking")
-    @Autowired
-    private final Job jobMaking;
+    @Value("${spring.batch.job.name}")
+    private String jobName;
 
-    public StartupRunner(JobLauncher jobLauncher,
-                         Job jobMaking) {
+    @Autowired
+    private ApplicationContext context;
+
+    public StartupRunner(JobLauncher jobLauncher) {
         this.jobLauncher = jobLauncher;
-        this.jobMaking = jobMaking;
     }
 
     /**
@@ -44,6 +45,7 @@ public class StartupRunner implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         JobParametersBuilder builder = new JobParametersBuilder();
+        Job job = context.getBean(jobName, Job.class);
         for (String arg : args) {
             String[] parts = arg.split("=", 2);
             if (parts.length == 2) {
@@ -55,6 +57,6 @@ public class StartupRunner implements CommandLineRunner {
         builder.addString(FILE_NAME_INPUT, "data.csv");
         log.info("Job started with parameters: {}", builder);
 
-        jobLauncher.run(jobMaking, builder.toJobParameters());
+        jobLauncher.run(job, builder.toJobParameters());
     }
 }

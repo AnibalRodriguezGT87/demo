@@ -92,36 +92,35 @@ public class SftpService {
         }
     }
 
-    public void readFirstFile(String remoteDirectory) throws SftpException {
-        readFirstFile(remoteDirectory, false);
+    public void readFirstFile() throws SftpException {
+        readFirstFile(false);
     }
 
-    public void readFirstDecryptedFile(String remoteDirectory) throws SftpException {
-        readFirstFile(remoteDirectory, true);
+    public void readFirstDecryptedFile() throws SftpException {
+        readFirstFile(true);
     }
 
     /**
      * Reads the first file in the specified remote directory that matches the encrypted file extension.
      * If the file is encrypted, it will be decrypted before reading.
      *
-     * @param remoteDirectory the path to the remote directory on the SFTP server
-     * @param isEncrypted     a boolean indicating whether the file is encrypted
      * @throws SftpException if an error occurs while listing files or reading the file
      */
-    private void readFirstFile(String remoteDirectory, boolean isEncrypted) throws SftpException {
+    private void readFirstFile(boolean isEncrypted) throws SftpException {
         try {
             final String expectedExtension = java.util.Optional.ofNullable(properties.getFileExtension())
                     .filter(ext -> !ext.isBlank())
                     .orElse(".gpg");
 
-            String fileName = Arrays.stream(session.list(remoteDirectory))
+            String fileName = Arrays.stream(session.list(properties.getRemoteDirectoryInput()))
                     .map(SftpClient.DirEntry::getFilename)
                     .filter(name -> name != null
                             && !name.isBlank()
                             && (!isEncrypted || name.endsWith(expectedExtension)))
                     .findFirst()
                     .orElseThrow();
-            readFile(remoteDirectory + "/" + fileName, isEncrypted);
+
+            readFile(properties.getRemoteDirectoryInput() + "/" + fileName, isEncrypted);
         } catch (Exception e) {
             throw new SftpException("Error occurred while listing files in remote directory:" + e.getMessage(), e);
         }

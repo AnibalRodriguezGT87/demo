@@ -6,6 +6,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -15,11 +17,15 @@ public class StartupRunnerTest {
     @Test
     void run_withArgs_callsLauncherWithParsedParameters() throws Exception {
         JobLauncher launcher = mock(JobLauncher.class);
+        ApplicationContext context = mock(ApplicationContext.class);
         Job job = mock(Job.class);
         JobExecution exec = mock(JobExecution.class);
         when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
+        when(context.getBean("job", Job.class)).thenReturn(job);
 
-        StartupRunner runner = new StartupRunner(launcher, job);
+        StartupRunner runner = new StartupRunner(launcher);
+        ReflectionTestUtils.setField(runner, "context", context);
+        ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("foo=bar", "baz=qux");
 
         ArgumentCaptor<JobParameters> captor = ArgumentCaptor.forClass(JobParameters.class);
@@ -28,16 +34,23 @@ public class StartupRunnerTest {
 
         assertEquals("bar", params.getString("foo"));
         assertEquals("qux", params.getString("baz"));
+        assertEquals("/upload", params.getString("remoteDirectory"));
+        assertEquals("output.csv", params.getString("fileNameOutput"));
+        assertEquals("data.csv", params.getString("fileNameInput"));
     }
 
     @Test
     void run_withInvalidArgs_ignoresNonKeyValueAndStillLaunches() throws Exception {
         JobLauncher launcher = mock(JobLauncher.class);
+        ApplicationContext context = mock(ApplicationContext.class);
         Job job = mock(Job.class);
         JobExecution exec = mock(JobExecution.class);
         when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
+        when(context.getBean("job", Job.class)).thenReturn(job);
 
-        StartupRunner runner = new StartupRunner(launcher, job);
+        StartupRunner runner = new StartupRunner(launcher);
+        ReflectionTestUtils.setField(runner, "context", context);
+        ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("invalidArg", "onlykey=");
 
         ArgumentCaptor<JobParameters> captor = ArgumentCaptor.forClass(JobParameters.class);

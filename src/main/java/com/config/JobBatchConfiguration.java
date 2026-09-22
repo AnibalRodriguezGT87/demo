@@ -21,6 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration
 public class JobBatchConfiguration {
 
+    public static final String JOB_BEAN_NAME = "jobMaking";
     /**
      * This method defines a Job bean that represents the batch job.
      * It takes a Step and a JobRepository as parameters and configures the job with a name, starting step, and an incrementer.
@@ -29,8 +30,8 @@ public class JobBatchConfiguration {
      * @param jobRepo the JobRepository for managing job metadata
      * @return a Job instance
     */
-    @Bean
-    public Job jobMaking(Step step,JobRepository jobRepo) {
+    @Bean(name = JOB_BEAN_NAME)
+    public Job jobMaking(Step step, JobRepository jobRepo) {
          return new JobBuilder("making-job", jobRepo )
                 .start(step)
                 .incrementer(new RunIdIncrementer())

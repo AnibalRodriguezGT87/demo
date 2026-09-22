@@ -23,5 +23,7 @@ public class SftpProperties {
     private String tempFileExtension = ".txt";
     private String privateKey;
     private String privateKeyPassphrase;
+    private String remoteDirectoryInput;
+    private String remoteDirectoryOutput;
 
 }
