@@ -23,17 +23,13 @@ import static com.constants.Constants.REMOTE_DIRECTORY;
 public class StartupRunner implements CommandLineRunner {
 
     @Autowired
-    private final JobLauncher jobLauncher;
-
-    @Value("${spring.batch.job.name}")
-    private String jobName;
+    private JobLauncher jobLauncher;
 
     @Autowired
     private ApplicationContext context;
 
-    public StartupRunner(JobLauncher jobLauncher) {
-        this.jobLauncher = jobLauncher;
-    }
+    @Value("${spring.batch.job.name}")
+    private String jobName;
 
     /**
      * This method is executed on application startup. It builds job parameters from command-line arguments
@@ -44,6 +40,7 @@ public class StartupRunner implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
+        log.info("Starting {}", jobName);
         JobParametersBuilder builder = new JobParametersBuilder();
         Job job = context.getBean(jobName, Job.class);
         for (String arg : args) {

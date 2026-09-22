@@ -23,7 +23,8 @@ public class StartupRunnerTest {
         when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
         when(context.getBean("job", Job.class)).thenReturn(job);
 
-        StartupRunner runner = new StartupRunner(launcher);
+        StartupRunner runner = new StartupRunner();
+        ReflectionTestUtils.setField(runner, "jobLauncher", launcher);
         ReflectionTestUtils.setField(runner, "context", context);
         ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("foo=bar", "baz=qux");
@@ -48,7 +49,8 @@ public class StartupRunnerTest {
         when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
         when(context.getBean("job", Job.class)).thenReturn(job);
 
-        StartupRunner runner = new StartupRunner(launcher);
+        StartupRunner runner = new StartupRunner();
+        ReflectionTestUtils.setField(runner, "jobLauncher", launcher);
         ReflectionTestUtils.setField(runner, "context", context);
         ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("invalidArg", "onlykey=");
