@@ -1,14 +1,12 @@
 spring:
   application:
     name: acq-atm-csf-generator
-
   batch:
     job:
       enabled: false
-
-logging:
-  level:
-    org.springframework.batch: DEBUG
+  logging:
+    level:
+      org.springframework.batch: DEBUG
 
 ## SFTP configuration
 sftp:
