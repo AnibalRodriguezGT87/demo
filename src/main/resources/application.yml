@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: acq-atm-csf-generator
+
+  batch:
+    job:
+      enabled: false
+
+logging:
+  level:
+    org.springframework.batch: DEBUG
+
+## SFTP configuration
+sftp:
+  host: localhost
+  port: 2222
+  user: test
+  password: test
+## private-key: /opt/keys/id_rsa
+## private-key-passphrase: miPassphrase
+
+## PGP properties
+  pgp:
+    passphrase : anibal.rodriguez.bdg
+    private-key : BDGSA_0x32093250EE689AF7_SECRET.asc
