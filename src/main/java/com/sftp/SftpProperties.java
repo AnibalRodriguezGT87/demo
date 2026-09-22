@@ -17,7 +17,7 @@ public class SftpProperties {
 
     private String host;
     private int port;
-    private String username;
+    private String user;
     private String password;
     private String fileExtension = ".gpg";
     private String tempFileExtension = ".txt";
