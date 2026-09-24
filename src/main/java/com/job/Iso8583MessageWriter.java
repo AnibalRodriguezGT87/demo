@@ -63,9 +63,8 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
     @Override
     public void close() {
         try {
-            String remoteDirectory = "upload";
             String fileName = "output.csv";
-            sftpService.writeSftpFile(remoteDirectory, fileName);
+            sftpService.writeSftpFile(fileName);
             sftpService.closeSession();
         } catch (SftpException e) {
             throw new RuntimeException(e);

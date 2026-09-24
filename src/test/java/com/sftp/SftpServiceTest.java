@@ -13,6 +13,8 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -29,6 +31,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SftpServiceTest {
+
+    private static String createPrivateKeyFile() throws Exception {
+        Path keyPath = Files.createTempFile("pgp-private-key", ".asc");
+        Files.writeString(keyPath, "private-key-placeholder", StandardCharsets.UTF_8);
+        return keyPath.toString();
+    }
 
     @Test
     void openSftpSession_opensSession() throws Exception {
@@ -88,11 +96,13 @@ class SftpServiceTest {
         when(pgpService.decrypt(any(), any(), any())).thenReturn(new ByteArrayInputStream("plain\nline\n".getBytes(StandardCharsets.UTF_8)));
 
         PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPrivateKey("data.csv");
+        pgpProperties.setPrivateKey(createPrivateKeyFile());
 
         SftpProperties properties = new SftpProperties();
         properties.setFileExtension(".pgp");
         properties.setTempFileExtension(".tmp");
+        properties.setRemoteDirectoryInput("/upload");
+        properties.setRemoteDirectoryOutput("/upload");
 
         doAnswer(invocation -> {
             OutputStream output = invocation.getArgument(1);
@@ -130,7 +140,9 @@ class SftpServiceTest {
         }).when(session).read(eq("/upload/first.csv"), any(OutputStream.class));
 
         SftpProperties properties = new SftpProperties();
+        properties.setFileExtension(".csv");
         properties.setRemoteDirectoryInput("/upload");
+        properties.setRemoteDirectoryOutput("/upload");
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
         service.openSftpSession();
         service.readFirstFile();
@@ -150,11 +162,12 @@ class SftpServiceTest {
         when(pgpService.decrypt(any(), any(), any())).thenReturn(new ByteArrayInputStream("secret\n".getBytes(StandardCharsets.UTF_8)));
 
         PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPrivateKey("data.csv");
+        pgpProperties.setPrivateKey(createPrivateKeyFile());
 
         SftpProperties properties = new SftpProperties();
         properties.setFileExtension(".pgp");
         properties.setRemoteDirectoryInput("/upload");
+        properties.setRemoteDirectoryOutput("/upload");
 
         SftpClient.DirEntry ignoredEntry = mock(SftpClient.DirEntry.class);
         SftpClient.DirEntry encryptedEntry = mock(SftpClient.DirEntry.class);
@@ -183,12 +196,15 @@ class SftpServiceTest {
         SftpSession session = mock(SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
 
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryOutput("/upload");
+
+        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
         service.openSftpSession();
         service.setOutputStream();
         service.setInputStream("first");
         service.setInputStream("second");
-        service.writeSftpFile("/upload", "output.csv");
+        service.writeSftpFile("output.csv");
 
         var captor = forClass(ByteArrayInputStream.class);
         verify(session).write(captor.capture(), eq("/upload/output.csv"));
@@ -255,6 +271,7 @@ class SftpServiceTest {
 
         SftpProperties properties = new SftpProperties();
         properties.setRemoteDirectoryInput("/upload");
+        properties.setRemoteDirectoryOutput("/upload");
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
         service.openSftpSession();
 

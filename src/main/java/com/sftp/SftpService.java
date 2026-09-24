@@ -175,14 +175,13 @@ public class SftpService {
     /**
      * Closes the output stream and writes its contents to the specified remote directory and file on the SFTP server.
      *
-     * @param remoteDirectory the path to the remote directory
      * @param fileName        the name of the file to write to
      * @throws SftpException if an error occurs while closing the output stream or writing to the SFTP server
      */
-    public void writeSftpFile(String remoteDirectory, String fileName) throws SftpException {
+    public void writeSftpFile(String fileName) throws SftpException {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
-            session.write(in, remoteDirectory + "/" + fileName);
+            session.write(in, properties.getRemoteDirectoryOutput() + "/" + fileName);
         } catch (Exception e) {
             throw new SftpException("Error closing SFTP writer", e);
         }
