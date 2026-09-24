@@ -4,7 +4,6 @@ import com.exception.SftpException;
 import com.pgp.PGPProperties;
 import com.pgp.PgpService;
 import org.apache.sshd.sftp.client.SftpClient;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.integration.sftp.session.SftpSession;
 import org.springframework.stereotype.Service;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Optional;
@@ -94,7 +94,7 @@ public class SftpService {
             }
 
             InputStream encryptedInput = Files.newInputStream(tempFile);
-            InputStream privateKey = new ClassPathResource(pgpProperties.getPrivateKey()).getInputStream();
+            InputStream privateKey = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()));
             InputStream decryptedInput = pgpService.decrypt(encryptedInput, privateKey, pgpProperties.getPassphrase());
 
             Path decryptedFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
