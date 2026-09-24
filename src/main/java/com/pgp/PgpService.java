@@ -143,4 +143,11 @@ public class PgpService {
 
         throw new IllegalStateException("No PGPLiteralData found in PGP message");
     }
+
+    public InputStream encrypt(byte[] encryptedData, byte[] privateKeyData, String passphrase) throws Exception {
+        try (InputStream encryptedStream = new ByteArrayInputStream(encryptedData);
+             InputStream privateKeyStream = new ByteArrayInputStream(privateKeyData)) {
+            return decrypt(encryptedStream, privateKeyStream, passphrase);
+        }
+    }
 }

@@ -102,7 +102,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readDecryptedFile("upload/data.pgp");
+        service.readEncryptedFile("upload/data.pgp");
 
         assertEquals("plain", service.getRowLine());
         assertEquals("line", service.getRowLine());
@@ -170,7 +170,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readFirstDecryptedFile();
+        service.readFirstEncryptedFile();
 
         assertEquals("secret", service.getRowLine());
         service.closeReader();
@@ -276,7 +276,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstDecryptedFile);
+        SftpException exception = assertThrows(SftpException.class, service::readFirstEncryptedFile);
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
@@ -319,7 +319,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstDecryptedFile);
+        SftpException exception = assertThrows(SftpException.class, service::readFirstEncryptedFile);
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();

@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Service class for handling SFTP operations, including reading and writing files,
@@ -53,11 +54,23 @@ public class SftpService {
         }
     }
 
+    /**
+     * Reads a file from the SFTP server.
+     *
+     * @param inputFile the path to the file on the SFTP server
+     * @throws SftpException if an error occurs while reading the file
+     */
     public void readFile(String inputFile) throws SftpException {
         readFile(inputFile, false);
     }
 
-    public void readDecryptedFile(String inputFile) throws SftpException {
+    /**
+     * Reads an encrypted file from the SFTP server and decrypts it before reading.
+     *
+     * @param inputFile the path to the encrypted file on the SFTP server
+     * @throws SftpException if an error occurs while reading or decrypting the file
+     */
+    public void readEncryptedFile(String inputFile) throws SftpException {
         readFile(inputFile, true);
     }
 
@@ -79,6 +92,7 @@ public class SftpService {
                 reader = Files.newBufferedReader(tempFile);
                 return;
             }
+
             InputStream encryptedInput = Files.newInputStream(tempFile);
             InputStream privateKey = new ClassPathResource(pgpProperties.getPrivateKey()).getInputStream();
             InputStream decryptedInput = pgpService.decrypt(encryptedInput, privateKey, pgpProperties.getPassphrase());
@@ -92,11 +106,21 @@ public class SftpService {
         }
     }
 
+    /**
+     * Reads the first non-encrypted file in the specified remote directory.
+     *
+     * @throws SftpException if an error occurs while listing files or reading the file
+     */
     public void readFirstFile() throws SftpException {
         readFirstFile(false);
     }
 
-    public void readFirstDecryptedFile() throws SftpException {
+    /**
+     * Reads the first encrypted file in the specified remote directory and decrypts it before reading.
+     *
+     * @throws SftpException if an error occurs while listing files or reading the file
+     */
+    public void readFirstEncryptedFile() throws SftpException {
         readFirstFile(true);
     }
 
@@ -108,15 +132,14 @@ public class SftpService {
      */
     private void readFirstFile(boolean isEncrypted) throws SftpException {
         try {
-            final String expectedExtension = java.util.Optional.ofNullable(properties.getFileExtension())
+            final String expectedExtension = Optional.ofNullable(properties.getFileExtension())
                     .filter(ext -> !ext.isBlank())
                     .orElse(".gpg");
 
             String fileName = Arrays.stream(session.list(properties.getRemoteDirectoryInput()))
                     .map(SftpClient.DirEntry::getFilename)
-                    .filter(name -> name != null
-                            && !name.isBlank()
-                            && (!isEncrypted || name.endsWith(expectedExtension)))
+                    .filter(name -> name != null && !name.isBlank()
+                            && Arrays.stream(expectedExtension.split(",")).anyMatch(name::endsWith))
                     .findFirst()
                     .orElseThrow();
 
