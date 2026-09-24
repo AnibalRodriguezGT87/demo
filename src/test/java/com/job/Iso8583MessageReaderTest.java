@@ -31,7 +31,7 @@ class Iso8583MessageReaderTest {
         reader.close();
 
         verify(sftpService).openSftpSession();
-        verify(sftpService).readFirstEncryptedFile();
+        verify(sftpService).readFirstFile();
         verify(sftpService, times(3)).getRowLine();
         verify(sftpService).closeReader();
         verify(sftpService).closeSession();

@@ -29,7 +29,7 @@ class Iso8583MessageWriterTest {
         verify(sftpService).setOutputStream();
         verify(sftpService).setInputStream("first");
         verify(sftpService).setInputStream("second");
-        verify(sftpService).writeSftpFile("output.csv");
+        verify(sftpService).write("output.csv.pgp");
         verify(sftpService).closeSession();
     }
 
@@ -60,7 +60,7 @@ class Iso8583MessageWriterTest {
     @Test
     void close_throwsRuntimeException_whenUploadFails() throws Exception {
         SftpService sftpService = mock(SftpService.class);
-        doThrow(new SftpException("upload boom")).when(sftpService).writeSftpFile( "output.csv");
+        doThrow(new SftpException("upload boom")).when(sftpService).write("output.csv.pgp");
 
         Iso8583MessageWriter writer = new Iso8583MessageWriter(sftpService);
         writer.open(new ExecutionContext());

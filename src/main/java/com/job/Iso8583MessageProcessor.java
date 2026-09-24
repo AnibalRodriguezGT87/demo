@@ -78,8 +78,8 @@ public class Iso8583MessageProcessor implements ItemProcessor<String, String>, S
             RecordData record = reader.readLine(rawLine, lineNumber);
 
             log.info("Record Type: {}", record.getRecordTypeCode()); // Output: DR
-            log.info("Account:     {}", record.getValue("Currency")); // Output: 1234567
-            log.info("Amount:      {}", record.getValue("EffectiveDate"));   // Output: 5000
+            log.info("Currency:     {}", record.getValue("Currency")); // Output: 1234567
+            log.info("EffectiveDate:      {}", record.getValue("EffectiveDate"));   // Output: 5000
 
             Iso8583Parser iso8583Parser = new Iso8583Parser();
             return iso8583Parser.parse(item).toString();

@@ -2,6 +2,7 @@ package com.pgp;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -97,6 +98,31 @@ class PgpServiceTest {
                 || exception.getMessage().contains("No PGPLiteralData"));
     }
 
+    @Test
+    void encrypt_shouldReturnEncryptedDataThatCanBeDecrypted() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+
+        PgpArtifacts artifacts = createPgpArtifacts(
+                "encrypt@example.com",
+                "EncryptPassphrase!123",
+                "mensaje cifrado"
+        );
+
+        try (InputStream plainText = Files.newInputStream(artifacts.messageFile());
+             InputStream publicKeyStream = Files.newInputStream(artifacts.publicKeyFile());
+             InputStream encryptedStream = service.encrypt(plainText, publicKeyStream);
+             InputStream privateKeyStream = Files.newInputStream(artifacts.privateKeyFile())) {
+
+            byte[] encryptedBytes = encryptedStream.readAllBytes();
+            assertTrue(encryptedBytes.length > 0);
+
+            try (InputStream decrypted = service.decrypt(new ByteArrayInputStream(encryptedBytes), privateKeyStream, artifacts.passphrase())) {
+                String result = new String(decrypted.readAllBytes(), StandardCharsets.UTF_8);
+                assertEquals("mensaje cifrado", result);
+            }
+        }
+    }
+
     private static boolean isGpgAvailable() {
         try {
             Process process = new ProcessBuilder("gpg", "--version").start();
@@ -131,6 +157,17 @@ class PgpServiceTest {
                 "--recipient", uid,
                 messageFile.toString());
 
+        Path publicKeyFile = keyHome.resolve("public-key.asc");
+        runGpg(keyHome,
+                "--batch",
+                "--yes",
+                "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--armor",
+                "--output", publicKeyFile.toString(),
+                "--export",
+                uid);
+
         Path privateKeyFile = keyHome.resolve("private-key.asc");
         runGpg(keyHome,
                 "--batch",
@@ -142,7 +179,7 @@ class PgpServiceTest {
                 "--export-secret-keys",
                 uid);
 
-        return new PgpArtifacts(encryptedFile, privateKeyFile, passphrase);
+        return new PgpArtifacts(encryptedFile, privateKeyFile, passphrase, publicKeyFile, messageFile);
     }
 
     private static void runGpg(Path gnupgHome, String... args) throws Exception {
@@ -164,6 +201,6 @@ class PgpServiceTest {
         }
     }
 
-    private record PgpArtifacts(Path encryptedFile, Path privateKeyFile, String passphrase) {
+    private record PgpArtifacts(Path encryptedFile, Path privateKeyFile, String passphrase, Path publicKeyFile, Path messageFile) {
     }
 }

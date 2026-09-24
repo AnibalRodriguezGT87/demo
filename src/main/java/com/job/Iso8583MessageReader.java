@@ -31,7 +31,7 @@ public class Iso8583MessageReader extends AbstractItemCountingItemStreamItemRead
     protected void doOpen() throws BatchReadException {
         try {
             sftpService.openSftpSession();
-            sftpService.readFirstEncryptedFile();
+            sftpService.readFirstFile();
         } catch (Exception e) {
             throw new BatchReadException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
         }

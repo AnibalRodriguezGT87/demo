@@ -1,18 +1,20 @@
 package com.pgp;
 
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openpgp.*;
 import org.bouncycastle.openpgp.operator.PublicKeyDataDecryptorFactory;
-import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
-import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyDataDecryptorFactoryBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.*;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.SecureRandom;
 import java.security.Security;
+import java.util.Date;
 import java.util.Iterator;
 
 /**
@@ -144,10 +146,49 @@ public class PgpService {
         throw new IllegalStateException("No PGPLiteralData found in PGP message");
     }
 
-    public InputStream encrypt(byte[] encryptedData, byte[] privateKeyData, String passphrase) throws Exception {
-        try (InputStream encryptedStream = new ByteArrayInputStream(encryptedData);
-             InputStream privateKeyStream = new ByteArrayInputStream(privateKeyData)) {
-            return decrypt(encryptedStream, privateKeyStream, passphrase);
+    public InputStream encrypt(InputStream plainText, InputStream publicKeyInput) throws Exception {
+
+        PGPPublicKeyRingCollection keyRings = new PGPPublicKeyRingCollection(
+                PGPUtil.getDecoderStream(publicKeyInput),
+                new JcaKeyFingerprintCalculator());
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        Iterator<PGPPublicKeyRing> ringIterator = keyRings.getKeyRings();
+
+        PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+                new JcePGPDataEncryptorBuilder(
+                        SymmetricKeyAlgorithmTags.AES_256)
+                        .setWithIntegrityPacket(true)
+                        .setSecureRandom(new SecureRandom())
+                        .setProvider("BC")
+        );
+
+        while (ringIterator.hasNext()) {
+            PGPPublicKeyRing ring = ringIterator.next();
+            Iterator<PGPPublicKey> keyIterator = ring.getPublicKeys();
+
+            while (keyIterator.hasNext()) {
+                PGPPublicKey key = keyIterator.next();
+
+                if (key.isEncryptionKey()) {
+                    encryptedDataGenerator.addMethod(
+                            new JcePublicKeyKeyEncryptionMethodGenerator(key).setProvider("BC"));
+                }
+            }
         }
+
+        try (OutputStream encryptedOutput = encryptedDataGenerator.open(output, new byte[4096])) {
+            PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
+
+            try (OutputStream literalOutput = literalDataGenerator.open(
+                    encryptedOutput,
+                    PGPLiteralData.BINARY,
+                    "file",
+                    new Date(),
+                    new byte[4096])) {
+                plainText.transferTo(literalOutput);
+            }
+        }
+
+        return new ByteArrayInputStream(output.toByteArray());
     }
 }

@@ -38,6 +38,12 @@ class SftpServiceTest {
         return keyPath.toString();
     }
 
+    private static String createPublicKeyFile() throws Exception {
+        Path keyPath = Files.createTempFile("pgp-public-key", ".asc");
+        Files.writeString(keyPath, "public-key-placeholder", StandardCharsets.UTF_8);
+        return keyPath.toString();
+    }
+
     @Test
     void openSftpSession_opensSession() throws Exception {
         DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
@@ -97,6 +103,7 @@ class SftpServiceTest {
 
         PGPProperties pgpProperties = new PGPProperties();
         pgpProperties.setPrivateKey(createPrivateKeyFile());
+        pgpProperties.setEnabled(true);
 
         SftpProperties properties = new SftpProperties();
         properties.setFileExtension(".pgp");
@@ -112,7 +119,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readEncryptedFile("upload/data.pgp");
+        service.readFile("upload/data.pgp");
 
         assertEquals("plain", service.getRowLine());
         assertEquals("line", service.getRowLine());
@@ -168,6 +175,7 @@ class SftpServiceTest {
         properties.setFileExtension(".pgp");
         properties.setRemoteDirectoryInput("/upload");
         properties.setRemoteDirectoryOutput("/upload");
+        pgpProperties.setEnabled(true);
 
         SftpClient.DirEntry ignoredEntry = mock(SftpClient.DirEntry.class);
         SftpClient.DirEntry encryptedEntry = mock(SftpClient.DirEntry.class);
@@ -183,7 +191,7 @@ class SftpServiceTest {
 
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
         service.openSftpSession();
-        service.readFirstEncryptedFile();
+        service.readFirstFile();
 
         assertEquals("secret", service.getRowLine());
         service.closeReader();
@@ -204,11 +212,64 @@ class SftpServiceTest {
         service.setOutputStream();
         service.setInputStream("first");
         service.setInputStream("second");
-        service.writeSftpFile("output.csv");
+        service.write("output.csv");
 
         var captor = forClass(ByteArrayInputStream.class);
         verify(session).write(captor.capture(), eq("/upload/output.csv"));
         assertEquals("first\nsecond\n", new String(captor.getValue().readAllBytes(), StandardCharsets.UTF_8));
+
+        service.closeSession();
+    }
+
+    @Test
+    void writeAndEncryptedFile_writesEncryptedDataToRemoteFile() throws Exception {
+        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
+        SftpSession session = mock(SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        PgpService pgpService = mock(PgpService.class);
+        when(pgpService.encrypt(any(), any())).thenReturn(new ByteArrayInputStream("ciphertext".getBytes(StandardCharsets.UTF_8)));
+
+        PGPProperties pgpProperties = new PGPProperties();
+        pgpProperties.setPublicKey(createPublicKeyFile());
+        pgpProperties.setEnabled(true);
+
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryOutput("/upload");
+
+        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
+        service.openSftpSession();
+        service.setOutputStream();
+        service.setInputStream("plain-text");
+        service.write("output.pgp");
+
+        verify(session).write(any(ByteArrayInputStream.class), eq("/upload/output.pgp"));
+        service.closeSession();
+    }
+
+    @Test
+    void writeAndEncryptedFile_throwsSftpException_whenEncryptionFails() throws Exception {
+        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
+        SftpSession session = mock(SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        PgpService pgpService = mock(PgpService.class);
+        when(pgpService.encrypt(any(), any())).thenThrow(new RuntimeException("encrypt boom"));
+
+        PGPProperties pgpProperties = new PGPProperties();
+        pgpProperties.setPublicKey(createPublicKeyFile());
+        pgpProperties.setEnabled(true);
+
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryOutput("/upload");
+
+        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
+        service.openSftpSession();
+        service.setOutputStream();
+        service.setInputStream("plain-text");
+
+        SftpException exception = assertThrows(SftpException.class, () -> service.write("output.pgp"));
+        assertTrue(exception.getMessage().contains("Error closing SFTP writer"));
 
         service.closeSession();
     }
@@ -219,6 +280,42 @@ class SftpServiceTest {
 
         SftpException exception = assertThrows(SftpException.class, () -> service.setInputStream("value"));
         assertTrue(exception.getMessage().contains("Error writing to SFTP file"));
+    }
+
+    @Test
+    void getRowLine_throwsSftpException_whenReaderReadFails() throws Exception {
+        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
+        SftpSession session = mock(SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        service.openSftpSession();
+        service.readFile("upload/data.csv");
+
+        BufferedReader mockedReader = mock(BufferedReader.class);
+        doThrow(new RuntimeException("read boom")).when(mockedReader).readLine();
+        ReflectionTestUtils.setField(service, "reader", mockedReader);
+
+        SftpException exception = assertThrows(SftpException.class, service::getRowLine);
+        assertTrue(exception.getMessage().contains("Error occurred while reading a line from the reader"));
+
+        service.closeSession();
+    }
+
+    @Test
+    void readFile_throwsSftpException_whenSessionReadFails() throws Exception {
+        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
+        SftpSession session = mock(SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+        doThrow(new RuntimeException("read boom")).when(session).read(eq("upload/data.csv"), any(OutputStream.class));
+
+        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        service.openSftpSession();
+
+        SftpException exception = assertThrows(SftpException.class, () -> service.readFile("upload/data.csv"));
+        assertTrue(exception.getMessage().contains("Error occurred reading decrypted file"));
+
+        service.closeSession();
     }
 
     @Test
@@ -293,7 +390,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstEncryptedFile);
+        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();
@@ -329,6 +426,8 @@ class SftpServiceTest {
 
         PGPProperties pgpProperties = new PGPProperties();
         pgpProperties.setPrivateKey("data.csv");
+        pgpProperties.setEnabled(true);
+
         SftpProperties properties = new SftpProperties();
         properties.setFileExtension(".pgp");
         properties.setRemoteDirectoryInput("/upload");
@@ -336,7 +435,7 @@ class SftpServiceTest {
         SftpService service = new SftpService(sessionFactory, pgpProperties, properties, mock(PgpService.class));
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstEncryptedFile);
+        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
         assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
 
         service.closeSession();

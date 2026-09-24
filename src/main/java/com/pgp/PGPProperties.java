@@ -16,5 +16,7 @@ import org.springframework.stereotype.Component;
 public class PGPProperties {
     private String passphrase;
     private String privateKey;
+    private String publicKey;
+    private boolean enabled = false;
 
 }

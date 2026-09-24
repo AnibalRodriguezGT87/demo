@@ -55,40 +55,19 @@ public class SftpService {
     }
 
     /**
-     * Reads a file from the SFTP server.
-     *
-     * @param inputFile the path to the file on the SFTP server
-     * @throws SftpException if an error occurs while reading the file
-     */
-    public void readFile(String inputFile) throws SftpException {
-        readFile(inputFile, false);
-    }
-
-    /**
-     * Reads an encrypted file from the SFTP server and decrypts it before reading.
-     *
-     * @param inputFile the path to the encrypted file on the SFTP server
-     * @throws SftpException if an error occurs while reading or decrypting the file
-     */
-    public void readEncryptedFile(String inputFile) throws SftpException {
-        readFile(inputFile, true);
-    }
-
-    /**
      * Reads a file from the SFTP server. If the file is encrypted, it will be decrypted before reading.
      *
      * @param inputFile   the path to the input file on the SFTP server
-     * @param isEncrypted a boolean indicating whether the file is encrypted
      * @throws SftpException if an error occurs while reading or decrypting the file
      */
-    private void readFile(String inputFile, boolean isEncrypted) throws SftpException {
+    public void readFile(String inputFile) throws SftpException {
         try {
             Path tempFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
             try (OutputStream os = Files.newOutputStream(tempFile)) {
                 session.read(inputFile, os);
             }
 
-            if (!isEncrypted) {
+            if (!pgpProperties.isEnabled()) {
                 reader = Files.newBufferedReader(tempFile);
                 return;
             }
@@ -107,48 +86,26 @@ public class SftpService {
     }
 
     /**
-     * Reads the first non-encrypted file in the specified remote directory.
-     *
-     * @throws SftpException if an error occurs while listing files or reading the file
-     */
-    public void readFirstFile() throws SftpException {
-        readFirstFile(false);
-    }
-
-    /**
-     * Reads the first encrypted file in the specified remote directory and decrypts it before reading.
-     *
-     * @throws SftpException if an error occurs while listing files or reading the file
-     */
-    public void readFirstEncryptedFile() throws SftpException {
-        readFirstFile(true);
-    }
-
-    /**
      * Reads the first file in the specified remote directory that matches the encrypted file extension.
      * If the file is encrypted, it will be decrypted before reading.
      *
      * @throws SftpException if an error occurs while listing files or reading the file
      */
-    private void readFirstFile(boolean isEncrypted) throws SftpException {
+    public void readFirstFile() throws SftpException {
         try {
-            final String expectedExtension = Optional.ofNullable(properties.getFileExtension())
-                    .filter(ext -> !ext.isBlank())
-                    .orElse(".gpg");
-
             String fileName = Arrays.stream(session.list(properties.getRemoteDirectoryInput()))
                     .map(SftpClient.DirEntry::getFilename)
                     .filter(name -> name != null && !name.isBlank()
-                            && Arrays.stream(expectedExtension.split(",")).anyMatch(name::endsWith))
+                            && Arrays.stream(properties.getFileExtension().split(","))
+                            .anyMatch(name::endsWith))
                     .findFirst()
                     .orElseThrow();
 
-            readFile(properties.getRemoteDirectoryInput() + "/" + fileName, isEncrypted);
+            readFile(properties.getRemoteDirectoryInput() + "/" + fileName);
         } catch (Exception e) {
             throw new SftpException("Error occurred while listing files in remote directory:" + e.getMessage(), e);
         }
     }
-
 
     /**
      * Initializes the output stream for writing data to the SFTP server.
@@ -172,16 +129,25 @@ public class SftpService {
         }
     }
 
+
     /**
      * Closes the output stream and writes its contents to the specified remote directory and file on the SFTP server.
      *
      * @param fileName        the name of the file to write to
      * @throws SftpException if an error occurs while closing the output stream or writing to the SFTP server
      */
-    public void writeSftpFile(String fileName) throws SftpException {
+    public void write(String fileName) throws SftpException {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
+            if (pgpProperties.isEnabled()) {
+                InputStream publicKey = Files.newInputStream(Paths.get(pgpProperties.getPublicKey()));
+                InputStream encryptedFile = pgpService.encrypt(in, publicKey);
+                session.write(encryptedFile, properties.getRemoteDirectoryOutput() + "/" + fileName);
+                return;
+            }
+
             session.write(in, properties.getRemoteDirectoryOutput() + "/" + fileName);
+            outputStream.close();
         } catch (Exception e) {
             throw new SftpException("Error closing SFTP writer", e);
         }
