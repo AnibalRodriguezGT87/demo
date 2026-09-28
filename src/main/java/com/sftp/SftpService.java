@@ -8,13 +8,16 @@ import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 import org.springframework.integration.sftp.session.SftpSession;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.Optional;
 
 /**
  * Service class for handling SFTP operations, including reading and writing files,
@@ -67,19 +70,19 @@ public class SftpService {
                 session.read(inputFile, os);
             }
 
-            if (!pgpProperties.isEnabled()) {
-                reader = Files.newBufferedReader(tempFile);
+            if (pgpProperties.isEnabled()) {
+                InputStream encryptedInput = Files.newInputStream(tempFile);
+                InputStream privateKey = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()));
+                InputStream decryptedInput = pgpService.decrypt(encryptedInput, privateKey, pgpProperties.getPassphrase());
+
+                Path decryptedFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
+                Files.copy(decryptedInput, decryptedFile, StandardCopyOption.REPLACE_EXISTING);
+
+                reader = Files.newBufferedReader(decryptedFile);
                 return;
             }
 
-            InputStream encryptedInput = Files.newInputStream(tempFile);
-            InputStream privateKey = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()));
-            InputStream decryptedInput = pgpService.decrypt(encryptedInput, privateKey, pgpProperties.getPassphrase());
-
-            Path decryptedFile = Files.createTempFile("sftp-", properties.getTempFileExtension());
-            Files.copy(decryptedInput, decryptedFile, StandardCopyOption.REPLACE_EXISTING);
-
-            reader = Files.newBufferedReader(decryptedFile);
+            reader = Files.newBufferedReader(tempFile);
         } catch (Exception e) {
             throw new SftpException("Error occurred reading decrypted file:" + e.getMessage(), e);
         }
@@ -129,7 +132,6 @@ public class SftpService {
         }
     }
 
-
     /**
      * Closes the output stream and writes its contents to the specified remote directory and file on the SFTP server.
      *
@@ -139,6 +141,7 @@ public class SftpService {
     public void write(String fileName) throws SftpException {
         try {
             ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
+
             if (pgpProperties.isEnabled()) {
                 InputStream publicKey = Files.newInputStream(Paths.get(pgpProperties.getPublicKey()));
                 InputStream encryptedFile = pgpService.encrypt(in, publicKey);
