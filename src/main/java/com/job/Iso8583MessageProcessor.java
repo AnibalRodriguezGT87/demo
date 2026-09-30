@@ -1,5 +1,6 @@
 package com.job;
 
+import com.constants.Constants;
 import com.exception.IsoException;
 import com.iso.Iso8583Parser;
 import jakarta.annotation.Nonnull;
@@ -9,8 +10,6 @@ import org.cccc_online.commons.fixedlength.model.FileSchema;
 import org.cccc_online.commons.fixedlength.model.RecordData;
 import org.cccc_online.commons.fixedlength.reader.FixedLengthReader;
 import org.cccc_online.commons.fixedlength.reader.StandardFixedLengthReader;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
@@ -21,14 +20,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
-public class Iso8583MessageProcessor implements ItemProcessor<String, String>, StepExecutionListener {
-
-    @Override
-    public void beforeStep(StepExecution stepExecution) {
-        log.info("Iniciando step: {}", stepExecution.getStepName());
-        log.info("JobExecution: {}", stepExecution.getJobExecution());
-        log.info("ExecutionContext: {}", stepExecution.getExecutionContext());
-    }
+public class Iso8583MessageProcessor implements ItemProcessor<String, String> {
 
     /**
      * Processes an input item (ISO 8583 message) and returns a string representation of the parsed message.
@@ -63,10 +55,10 @@ public class Iso8583MessageProcessor implements ItemProcessor<String, String>, S
                         .addAlphaNumericField("recordType", 2) // RD
                         .addNumericField("EffectiveDate", 8) // YYYYMMDD
                         .addNumericField("Currency", 3) // 840
-                        .addNumericField("SalesRate", 16) // Filler for Sales Rate
-                        .addNumericField("MiddleRate", 16) // Middle Rate (e.g.,    3.215)
-                        .addNumericField("PurchaseRate", 16) // Filler for Purchase Rate
-                        .addNumericField("CalculationBase", 3) // Calculation Base (e.g., 000)
+                        .addNumericField("SalesRate", 16, Constants.SPACE) // Filler for Sales Rate
+                        .addNumericField("MiddleRate", 16, Constants.SPACE) // Middle Rate (e.g.,    3.215)
+                        .addNumericField("PurchaseRate", 16, Constants.SPACE) // Filler for Purchase Rate
+                        .addNumericField("CalculationBase", 3, Constants.SPACE) // Calculation Base (e.g., 000)
                     // ------------------------------------------------------------------
                     // 3. Trailer Record ("FT")
                     // ------------------------------------------------------------------
@@ -85,8 +77,8 @@ public class Iso8583MessageProcessor implements ItemProcessor<String, String>, S
             RecordData record = reader.readLine(rawLine, lineNumber);
 
             log.info("Record Type: {}", record.getRecordTypeCode()); // Output: DR
-            log.info("Currency:     {}", record.getValue("Currency")); // Output: 1234567
-            log.info("EffectiveDate:      {}", record.getValue("EffectiveDate"));   // Output: 5000
+            log.info("Currency: {}", record.getValue("Currency")); // Output: 1234567
+            log.info("EffectiveDate: {}", record.getValue("EffectiveDate"));   // Output: 5000
 
             Iso8583Parser iso8583Parser = new Iso8583Parser();
             return iso8583Parser.parse(item).toString();

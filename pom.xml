@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.14</version>
+		<version>3.5.15</version>
 		<relativePath/>
 		<!-- lookup parent from repository -->
 	</parent>
@@ -17,7 +17,7 @@
 	
 	<properties>
 		<java.version>25</java.version>
-		<bouncycastle.version>1.84</bouncycastle.version>
+		<bouncycastle.version>1.85</bouncycastle.version>
 		<file-processing-commons.version>1.0.0</file-processing-commons.version>
 		<jacoco.plugin.version>0.8.14</jacoco.plugin.version>
 	</properties>
@@ -70,7 +70,7 @@
 		<dependency>
 			<groupId>org.cccc_online.commons</groupId>
 			<artifactId>file-processing-commons</artifactId>
-			<version>1.0.1</version>
+			<version>1.0.1-SNAPSHOT</version>
 			<scope>system</scope>
 			<systemPath>${project.basedir}/lib/file-processing-commons-1.0.1-SNAPSHOT.jar</systemPath>
 		</dependency>

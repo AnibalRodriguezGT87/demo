@@ -1,5 +1,6 @@
 package com.config;
 
+import com.job.Iso8583MessageListener;
 import com.job.Iso8583MessageProcessor;
 import com.job.Iso8583MessageReader;
 import com.job.Iso8583MessageWriter;
@@ -43,24 +44,27 @@ public class JobBatchConfiguration {
      * It takes a FlatFileItemReader, TestProcessor, FlatFileItemWriter, JobRepository, and PlatformTransactionManager as parameters.
      * It configures the step with a name, chunk size, reader, processor, and writer.
      *
-     * @param read the Iso8583MessageReader for reading data
-     * @param iso8583MessageProcessor the Iso8583MessageProcessor for processing data
+     * @param processor the Iso8583MessageProcessor for processing data
+     * @param listener the IsoIso8583MessageListener for listening data
      * @param write the Iso8583MessageWriter for writing data
+     * @param read the Iso8583MessageReader for reading data
      * @param jobRepo the JobRepository for managing job metadata
      * @param transactionManager the PlatformTransactionManager for managing transactions
      * @return a Step instance
     */
     @Bean
-    public Step step(Iso8583MessageReader read,
-                     Iso8583MessageProcessor iso8583MessageProcessor,
+    public Step step(Iso8583MessageProcessor processor,
+                     Iso8583MessageListener listener,
                      Iso8583MessageWriter write,
+                     Iso8583MessageReader read,
                      JobRepository jobRepo,
                      PlatformTransactionManager transactionManager) {
         return new StepBuilder("making-step", jobRepo)
                 .<String, String>chunk(2, transactionManager)
                 .reader(read)
-                .processor(iso8583MessageProcessor)
+                .processor(processor)
                 .writer(write)
+                .listener(listener)
                 .build();
     }
 
