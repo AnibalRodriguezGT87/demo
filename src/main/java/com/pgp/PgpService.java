@@ -146,6 +146,14 @@ public class PgpService {
         throw new IllegalStateException("No PGPLiteralData found in PGP message");
     }
 
+    /**
+     * Encrypts the given plain text input stream using the provided public key input stream.
+     *
+     * @param plainText       InputStream containing the plain text data
+     * @param publicKeyInput  InputStream containing the PGP public key
+     * @return InputStream containing the encrypted data
+     * @throws Exception if encryption fails or no encryption key is found
+     */
     public InputStream encrypt(InputStream plainText, InputStream publicKeyInput) throws Exception {
 
         PGPPublicKeyRingCollection keyRings = new PGPPublicKeyRingCollection(
