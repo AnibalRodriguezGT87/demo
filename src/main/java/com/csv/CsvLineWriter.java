@@ -5,7 +5,6 @@ import jakarta.annotation.Nonnull;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemStreamWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,6 +16,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+/**
+ * CsvLineWriter is a Spring Batch ItemStreamWriter that writes lines of text to a CSV file.
+ * It uses a BufferedWriter to write data to the specified output file, which is provided as a job parameter.
+ * The writer is step-scoped, meaning it is created and managed within the context of a specific step execution.
+ */
 @Component
 @StepScope
 public class CsvLineWriter implements ItemStreamWriter<String> {

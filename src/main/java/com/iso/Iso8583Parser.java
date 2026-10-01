@@ -22,6 +22,7 @@ public class Iso8583Parser {
      * Parses the given ISO 8583 message string and returns an IsoMessage object.
      *
      * @param decodeMessage the ISO 8583 message string to be parsed
+     * @throws IsoException if an error occurs during parsing
      * @return an IsoMessage object containing the parsed MTI, bitmaps, and data elements
      */
     public IsoMessage parse(String decodeMessage)  throws IsoException {

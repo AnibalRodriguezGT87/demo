@@ -12,6 +12,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+/**
+ * CsvLineReader is a Spring Batch ItemStreamReader that reads lines of text from a CSV file.
+ * It uses a BufferedReader to read data from the specified input file, which is provided as a job parameter.
+ * The reader is step-scoped, meaning it is created and managed within the context of a specific step execution.
+ */
 @Component
 @StepScope
 public class CsvLineReader extends AbstractItemCountingItemStreamItemReader<String> {
