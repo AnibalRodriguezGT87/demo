@@ -4,8 +4,8 @@ import com.exception.BatchWriteException;
 import com.exception.SftpException;
 import com.sftp.SftpService;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.item.Chunk;
-import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
+import org.springframework.batch.infrastructure.item.Chunk;
 
 import java.util.List;
 

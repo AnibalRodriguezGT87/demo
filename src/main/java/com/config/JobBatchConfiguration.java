@@ -4,15 +4,14 @@ import com.job.Iso8583MessageListener;
 import com.job.Iso8583MessageProcessor;
 import com.job.Iso8583MessageReader;
 import com.job.Iso8583MessageWriter;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * JobBatchConfiguration class is a configuration class for Spring Batch jobs.
@@ -49,7 +48,6 @@ public class JobBatchConfiguration {
      * @param write the Iso8583MessageWriter for writing data
      * @param read the Iso8583MessageReader for reading data
      * @param jobRepo the JobRepository for managing job metadata
-     * @param transactionManager the PlatformTransactionManager for managing transactions
      * @return a Step instance
     */
     @Bean
@@ -57,10 +55,9 @@ public class JobBatchConfiguration {
                      Iso8583MessageListener listener,
                      Iso8583MessageWriter write,
                      Iso8583MessageReader read,
-                     JobRepository jobRepo,
-                     PlatformTransactionManager transactionManager) {
+                     JobRepository jobRepo) {
         return new StepBuilder("making-step", jobRepo)
-                .<String, String>chunk(2, transactionManager)
+                .<String, String>chunk(2)
                 .reader(read)
                 .processor(processor)
                 .writer(write)

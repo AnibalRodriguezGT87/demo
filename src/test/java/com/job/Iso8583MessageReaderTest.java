@@ -4,8 +4,8 @@ import com.exception.BatchReadException;
 import com.exception.SftpException;
 import com.sftp.SftpService;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStreamException;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
+import org.springframework.batch.infrastructure.item.ItemStreamException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.doThrow;
@@ -46,7 +46,7 @@ class Iso8583MessageReaderTest {
         Iso8583MessageReader reader = new Iso8583MessageReader(sftpService);
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, () -> reader.open(new ExecutionContext()));
-        assertInstanceOf(BatchReadException.class, exception.getCause());
+        assertInstanceOf(SftpException.class, exception.getCause());
         assertTrue(exception.getCause().getMessage().contains("Error occurred while opening SFTP connection"));
     }
 
@@ -71,7 +71,7 @@ class Iso8583MessageReaderTest {
         reader.open(new ExecutionContext());
 
         ItemStreamException exception = assertThrows(ItemStreamException.class, reader::close);
-        assertInstanceOf(BatchReadException.class, exception.getCause());
-        assertTrue(exception.getCause().getMessage().contains("Error occurred while closing SFTP file reader"));
+        assertInstanceOf(SftpException.class, exception.getCause());
+        assertTrue(exception.getMessage().contains("Error occurred while closing SFTP file reader"));
     }
 }

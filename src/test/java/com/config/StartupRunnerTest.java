@@ -2,10 +2,10 @@ package com.config;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -16,21 +16,21 @@ public class StartupRunnerTest {
 
     @Test
     void run_withArgs_callsLauncherWithParsedParameters() throws Exception {
-        JobLauncher launcher = mock(JobLauncher.class);
+        JobOperator launcher = mock(JobOperator.class);
         ApplicationContext context = mock(ApplicationContext.class);
         Job job = mock(Job.class);
         JobExecution exec = mock(JobExecution.class);
-        when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
+        when(launcher.start(any(Job.class), any(JobParameters.class))).thenReturn(exec);
         when(context.getBean("job", Job.class)).thenReturn(job);
 
         StartupRunner runner = new StartupRunner();
-        ReflectionTestUtils.setField(runner, "jobLauncher", launcher);
+        ReflectionTestUtils.setField(runner, "jobOperator", launcher);
         ReflectionTestUtils.setField(runner, "context", context);
         ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("foo=bar", "baz=qux");
 
         ArgumentCaptor<JobParameters> captor = ArgumentCaptor.forClass(JobParameters.class);
-        verify(launcher).run(eq(job), captor.capture());
+        verify(launcher).start(eq(job), captor.capture());
         JobParameters params = captor.getValue();
 
         assertEquals("bar", params.getString("foo"));
@@ -42,24 +42,23 @@ public class StartupRunnerTest {
 
     @Test
     void run_withInvalidArgs_ignoresNonKeyValueAndStillLaunches() throws Exception {
-        JobLauncher launcher = mock(JobLauncher.class);
+        JobOperator launcher = mock(JobOperator.class);
         ApplicationContext context = mock(ApplicationContext.class);
         Job job = mock(Job.class);
         JobExecution exec = mock(JobExecution.class);
-        when(launcher.run(any(Job.class), any(JobParameters.class))).thenReturn(exec);
+        when(launcher.start(any(Job.class), any(JobParameters.class))).thenReturn(exec);
         when(context.getBean("job", Job.class)).thenReturn(job);
 
         StartupRunner runner = new StartupRunner();
-        ReflectionTestUtils.setField(runner, "jobLauncher", launcher);
+        ReflectionTestUtils.setField(runner, "jobOperator", launcher);
         ReflectionTestUtils.setField(runner, "context", context);
         ReflectionTestUtils.setField(runner, "jobName", "job");
         runner.run("invalidArg", "onlykey=");
 
         ArgumentCaptor<JobParameters> captor = ArgumentCaptor.forClass(JobParameters.class);
-        verify(launcher).run(eq(job), captor.capture());
+        verify(launcher).start(eq(job), captor.capture());
         JobParameters params = captor.getValue();
 
-        // invalidArg is ignored; onlykey= should be present with an empty string value
         assertEquals("", params.getString("onlykey"));
         assertNull(params.getString("invalidArg"));
     }

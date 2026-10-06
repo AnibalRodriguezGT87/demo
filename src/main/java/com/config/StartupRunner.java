@@ -1,9 +1,9 @@
 package com.config;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -23,7 +23,7 @@ import static com.constants.Constants.REMOTE_DIRECTORY;
 public class StartupRunner implements CommandLineRunner {
 
     @Autowired
-    private JobLauncher jobLauncher;
+    private JobOperator jobOperator;
 
     @Autowired
     private ApplicationContext context;
@@ -54,6 +54,6 @@ public class StartupRunner implements CommandLineRunner {
         builder.addString(FILE_NAME_INPUT, "data.csv");
         log.info("Job started with parameters: {}", builder);
 
-        jobLauncher.run(job, builder.toJobParameters());
+        jobOperator.start(job, builder.toJobParameters());
     }
 }
