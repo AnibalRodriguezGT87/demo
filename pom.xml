@@ -13,15 +13,14 @@
 	<groupId>com.example.4cs</groupId>
 	<artifactId>demo</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	
 	<properties>
 		<java.version>21</java.version>
 		<bouncycastle.version>1.86</bouncycastle.version>
 		<file-processing-commons.version>1.0.0</file-processing-commons.version>
 		<jacoco.plugin.version>0.8.14</jacoco.plugin.version>
 		<logback.version>1.6.3</logback.version>
+		<org.apache.sshd.version>2.20.0</org.apache.sshd.version>
 	</properties>
-
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -33,11 +32,6 @@
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-			<version>${logback.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
@@ -45,6 +39,16 @@
 		<dependency>
 			<groupId>org.springframework.integration</groupId>
 			<artifactId>spring-integration-sftp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.sshd</groupId>
+			<artifactId>sshd-sftp</artifactId>
+			<version>${org.apache.sshd.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -73,7 +77,6 @@
 			<version>${bouncycastle.version}</version>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -169,5 +172,3 @@
 		</plugins>
 	</build>
 </project>
-
-
