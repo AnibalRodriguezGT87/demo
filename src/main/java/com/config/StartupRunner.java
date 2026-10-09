@@ -7,6 +7,7 @@ import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import static com.constants.Constants.REMOTE_DIRECTORY;
  * It takes command-line arguments as job parameters and launches the specified job.
  */
 @Component
+@ConditionalOnProperty(name = "app.run-startup-job", havingValue = "true", matchIfMissing = true)
 @Slf4j
 public class StartupRunner implements CommandLineRunner {
 

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -22,7 +23,7 @@ public class JobBatchConfigurationTest {
         JobRepository jobRepo = mock(JobRepository.class);
         Job job = config.jobMaking(step, jobRepo);
         assertNotNull(job);
-        assertEquals("making-job", job.getName());
+        assertEquals(JobBatchConfiguration.JOB_BEAN_NAME, job.getName());
     }
 
     @Test
@@ -32,8 +33,9 @@ public class JobBatchConfigurationTest {
         Iso8583MessageListener listener = mock(Iso8583MessageListener.class);
         Iso8583MessageWriter writer = mock(Iso8583MessageWriter.class);
         JobRepository jobRepo = mock(JobRepository.class);
+        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
 
-        Step step = config.step(processor, listener, writer, reader, jobRepo);
+        Step step = config.step(processor, listener, writer, reader, jobRepo, transactionManager);
         assertNotNull(step);
         assertEquals("making-step", step.getName());
     }

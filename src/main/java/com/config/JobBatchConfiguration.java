@@ -12,6 +12,7 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * JobBatchConfiguration class is a configuration class for Spring Batch jobs.
@@ -32,7 +33,7 @@ public class JobBatchConfiguration {
     */
     @Bean(name = JOB_BEAN_NAME)
     public Job jobMaking(Step step, JobRepository jobRepo) {
-         return new JobBuilder("making-job", jobRepo )
+         return new JobBuilder(JOB_BEAN_NAME, jobRepo )
                 .start(step)
                 .incrementer(new RunIdIncrementer())
                 .build();
@@ -40,13 +41,12 @@ public class JobBatchConfiguration {
 
     /**
      * This method defines a Step bean that represents a step in the batch job.
-     * It takes a FlatFileItemReader, TestProcessor, FlatFileItemWriter, JobRepository, and PlatformTransactionManager as parameters.
+     * It takes an Iso8583MessageReader, Iso8583MessageProcessor, Iso8583MessageWriter, and JobRepository as parameters.
      * It configures the step with a name, chunk size, reader, processor, and writer.
      *
-     * @param processor the Iso8583MessageProcessor for processing data
-     * @param listener the IsoIso8583MessageListener for listening data
-     * @param write the Iso8583MessageWriter for writing data
      * @param read the Iso8583MessageReader for reading data
+     * @param processor the Iso8583MessageProcessor for processing data
+     * @param write the Iso8583MessageWriter for writing data
      * @param jobRepo the JobRepository for managing job metadata
      * @return a Step instance
     */
@@ -55,13 +55,15 @@ public class JobBatchConfiguration {
                      Iso8583MessageListener listener,
                      Iso8583MessageWriter write,
                      Iso8583MessageReader read,
-                     JobRepository jobRepo) {
+                     JobRepository jobRepo,
+                     PlatformTransactionManager transactionManager) {
         return new StepBuilder("making-step", jobRepo)
                 .<String, String>chunk(2)
                 .reader(read)
                 .processor(processor)
                 .writer(write)
                 .listener(listener)
+                .transactionManager(transactionManager)
                 .build();
     }
 

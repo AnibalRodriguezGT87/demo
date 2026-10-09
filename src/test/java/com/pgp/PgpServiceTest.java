@@ -1,10 +1,31 @@
 package com.pgp;
 
+import org.bouncycastle.bcpg.HashAlgorithmTags;
+import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags;
+import org.bouncycastle.openpgp.PGPEncryptedDataGenerator;
+import org.bouncycastle.openpgp.PGPException;
+import org.bouncycastle.openpgp.PGPPrivateKey;
+import org.bouncycastle.openpgp.PGPPublicKey;
+import org.bouncycastle.openpgp.PGPPublicKeyRing;
+import org.bouncycastle.openpgp.PGPPublicKeyRingCollection;
+import org.bouncycastle.openpgp.PGPSecretKey;
+import org.bouncycastle.openpgp.PGPSecretKeyRing;
+import org.bouncycastle.openpgp.PGPSecretKeyRingCollection;
+import org.bouncycastle.openpgp.PGPSignature;
+import org.bouncycastle.openpgp.PGPSignatureGenerator;
+import org.bouncycastle.openpgp.PGPUtil;
+import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -99,6 +120,131 @@ class PgpServiceTest {
     }
 
     @Test
+    void decrypt_shouldFail_whenMessageIsEmpty() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        PgpArtifacts artifacts = createPgpArtifacts(
+                "empty-message@example.com",
+                "EmptyMessagePassphrase!123",
+                "test"
+        );
+
+        try (InputStream privateKeyStream = Files.newInputStream(artifacts.privateKeyFile())) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> service.decrypt(InputStream.nullInputStream(), privateKeyStream, artifacts.passphrase()));
+            assertEquals("No encrypted data found in PGP message", exception.getMessage());
+        }
+    }
+
+    @Test
+    void decrypt_shouldFail_whenFirstPacketIsNotAnEncryptedDataList() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        PgpArtifacts artifacts = createPgpArtifacts(
+                "missing-list@example.com",
+                "MissingListPassphrase!123",
+                "test"
+        );
+
+        try (InputStream privateKeyStream = Files.newInputStream(artifacts.privateKeyFile())) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> service.decrypt(new ByteArrayInputStream(literalPacket()), privateKeyStream,
+                            artifacts.passphrase()));
+            assertEquals("No encrypted data list found in PGP message", exception.getMessage());
+        }
+    }
+
+    @Test
+    void decrypt_shouldContinueToEncryptedDataList_afterAnUnrelatedPacket() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        PgpArtifacts artifacts = createPgpArtifacts(
+                "leading-packet@example.com",
+                "LeadingPacketPassphrase!123",
+                "mensaje despues del paquete"
+        );
+
+        byte[] encryptedBytes;
+        try (InputStream armoredEncrypted = Files.newInputStream(artifacts.encryptedFile());
+             InputStream decodedEncrypted = PGPUtil.getDecoderStream(armoredEncrypted)) {
+            encryptedBytes = decodedEncrypted.readAllBytes();
+        }
+        byte[] input = new byte[literalPacket().length + encryptedBytes.length];
+        System.arraycopy(literalPacket(), 0, input, 0, literalPacket().length);
+        System.arraycopy(encryptedBytes, 0, input, literalPacket().length, encryptedBytes.length);
+
+        try (InputStream privateKeyStream = Files.newInputStream(artifacts.privateKeyFile());
+             InputStream decrypted = service.decrypt(new ByteArrayInputStream(input), privateKeyStream,
+                     artifacts.passphrase())) {
+            assertEquals("mensaje despues del paquete",
+                    new String(decrypted.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    void decrypt_shouldFail_whenMatchingPrivateKeyPassphraseIsWrong() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        PgpArtifacts artifacts = createPgpArtifacts(
+                "wrong-passphrase@example.com",
+                "CorrectPassphrase!123",
+                "test"
+        );
+
+        try (InputStream encryptedStream = Files.newInputStream(artifacts.encryptedFile());
+             InputStream privateKeyStream = Files.newInputStream(artifacts.privateKeyFile())) {
+            assertThrows(PGPException.class,
+                    () -> service.decrypt(encryptedStream, privateKeyStream, "WrongPassphrase!456"));
+        }
+    }
+
+    @Test
+    void decrypt_shouldRejectSignedPacketsWithoutLiteralData() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        PgpArtifacts recipient = createPgpArtifacts(
+                "signed-packets-recipient@example.com",
+                "RecipientPassphrase!123",
+                "test"
+        );
+        Path signingKeyHome = Files.createTempDirectory("pgp-signing-packets-");
+        String signingUid = "signature-packets@example.com";
+        runGpg(signingKeyHome, "--batch", "--pinentry-mode", "loopback",
+                "--passphrase", "",
+                "--quick-generate-key", signingUid, "rsa2048", "sign", "0");
+        Path signingPrivateKey = signingKeyHome.resolve("signing-key.asc");
+        runGpg(signingKeyHome, "--batch", "--yes", "--armor",
+                "--output", signingPrivateKey.toString(), "--export-secret-keys", signingUid);
+
+        byte[] signaturePackets;
+        try (InputStream secretKeyInput = Files.newInputStream(signingPrivateKey)) {
+            PGPSecretKeyRingCollection secretKeyRings = new PGPSecretKeyRingCollection(
+                    PGPUtil.getDecoderStream(secretKeyInput),
+                    new JcaKeyFingerprintCalculator());
+            PGPSecretKeyRing secretKeyRing = secretKeyRings.getKeyRings().next();
+            PGPSecretKey secretKey = secretKeyRing.getSecretKeys().next();
+            PGPPrivateKey privateKey = secretKey.extractPrivateKey(
+                    new JcePBESecretKeyDecryptorBuilder().setProvider("BC").build(new char[0]));
+            PGPSignatureGenerator signatureGenerator = new PGPSignatureGenerator(
+                    new JcaPGPContentSignerBuilder(secretKey.getPublicKey().getAlgorithm(),
+                            HashAlgorithmTags.SHA256).setProvider("BC"));
+            signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, privateKey);
+
+            ByteArrayOutputStream signatureOutput = new ByteArrayOutputStream();
+            signatureGenerator.generateOnePassVersion(false).encode(signatureOutput);
+            signatureGenerator.generate().encode(signatureOutput);
+            signaturePackets = signatureOutput.toByteArray();
+        }
+
+        byte[] encryptedSignaturePackets;
+        try (InputStream publicKeyInput = Files.newInputStream(recipient.publicKeyFile())) {
+            encryptedSignaturePackets = encryptRawPayload(signaturePackets, publicKeyInput);
+        }
+
+        try (InputStream privateKeyInput = Files.newInputStream(recipient.privateKeyFile())) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> service.decrypt(new ByteArrayInputStream(encryptedSignaturePackets),
+                            privateKeyInput, recipient.passphrase()));
+            assertEquals("No PGPLiteralData found in PGP message", exception.getMessage());
+        }
+    }
+
+    @Test
     void encrypt_shouldReturnEncryptedDataThatCanBeDecrypted() throws Exception {
         assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
 
@@ -121,6 +267,72 @@ class PgpServiceTest {
                 assertEquals("mensaje cifrado", result);
             }
         }
+    }
+
+    @Test
+    void encrypt_shouldFail_whenPublicKeyHasNoEncryptionKey() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+        Path keyHome = Files.createTempDirectory("pgp-signing-key-");
+        String uid = "signing-only@example.com";
+        runGpg(keyHome, "--batch", "--pinentry-mode", "loopback",
+                "--passphrase", "",
+                "--quick-generate-key", uid, "ed25519", "sign", "0");
+
+        Path publicKeyFile = keyHome.resolve("signing-key.asc");
+        runGpg(keyHome, "--batch", "--yes", "--armor",
+                "--output", publicKeyFile.toString(), "--export", uid);
+
+        try (InputStream publicKeyStream = Files.newInputStream(publicKeyFile)) {
+            PGPException exception = assertThrows(PGPException.class,
+                    () -> service.encrypt(new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8)),
+                            publicKeyStream));
+            assertEquals("No encryption key found in public key input", exception.getMessage());
+        }
+    }
+
+    @Test
+    void encrypt_shouldFail_whenPublicKeyCollectionIsEmpty() {
+        PGPException exception = assertThrows(PGPException.class,
+                () -> service.encrypt(new ByteArrayInputStream(new byte[0]),
+                        new ByteArrayInputStream(new byte[0])));
+
+        assertEquals("No encryption key found in public key input", exception.getMessage());
+    }
+
+    private static byte[] literalPacket() {
+        return new byte[]{(byte) 0xAC, 6, (byte) 'b', 0, 0, 0, 0, 0};
+    }
+
+    private static byte[] encryptRawPayload(byte[] payload, InputStream publicKeyInput) throws Exception {
+        PGPPublicKeyRingCollection keyRings = new PGPPublicKeyRingCollection(
+                PGPUtil.getDecoderStream(publicKeyInput),
+                new JcaKeyFingerprintCalculator());
+        PGPPublicKey encryptionKey = null;
+        for (var ringIterator = keyRings.getKeyRings(); ringIterator.hasNext() && encryptionKey == null;) {
+            PGPPublicKeyRing ring = ringIterator.next();
+            for (var keyIterator = ring.getPublicKeys(); keyIterator.hasNext();) {
+                PGPPublicKey key = keyIterator.next();
+                if (key.isEncryptionKey()) {
+                    encryptionKey = key;
+                    break;
+                }
+            }
+        }
+        if (encryptionKey == null) {
+            throw new IllegalStateException("Test recipient key has no encryption key");
+        }
+
+        PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+                new JcePGPDataEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256)
+                        .setWithIntegrityPacket(true)
+                        .setProvider("BC"));
+        encryptedDataGenerator.addMethod(
+                new JcePublicKeyKeyEncryptionMethodGenerator(encryptionKey).setProvider("BC"));
+        ByteArrayOutputStream encryptedOutput = new ByteArrayOutputStream();
+        try (OutputStream packetOutput = encryptedDataGenerator.open(encryptedOutput, new byte[4096])) {
+            packetOutput.write(payload);
+        }
+        return encryptedOutput.toByteArray();
     }
 
     private static boolean isGpgAvailable() {

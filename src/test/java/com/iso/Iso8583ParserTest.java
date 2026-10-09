@@ -67,4 +67,15 @@ public class Iso8583ParserTest {
                 "0609173030";
         assertThrows(IsoException.class, () -> parser.parse(input));
     }
+
+    @Test
+    void parse_logsKnownAndUnknownMtiValues() throws IsoException {
+        Iso8583Parser parser = new Iso8583Parser();
+
+        for (String mti : new String[]{"0100", "1211", "2320", "3451", "0560", "0682", "0800", "9999"}) {
+            IsoMessage message = parser.parse(mti + "0000000000000000");
+            assertEquals(mti, message.getMti());
+            assertTrue(message.getDataElements().isEmpty());
+        }
+    }
 }

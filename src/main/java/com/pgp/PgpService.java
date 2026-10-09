@@ -170,6 +170,7 @@ public class PgpService {
                         .setProvider("BC")
         );
 
+        boolean hasEncryptionKey = false;
         while (ringIterator.hasNext()) {
             PGPPublicKeyRing ring = ringIterator.next();
             Iterator<PGPPublicKey> keyIterator = ring.getPublicKeys();
@@ -178,10 +179,15 @@ public class PgpService {
                 PGPPublicKey key = keyIterator.next();
 
                 if (key.isEncryptionKey()) {
+                    hasEncryptionKey = true;
                     encryptedDataGenerator.addMethod(
                             new JcePublicKeyKeyEncryptionMethodGenerator(key).setProvider("BC"));
                 }
             }
+        }
+
+        if (!hasEncryptionKey) {
+            throw new PGPException("No encryption key found in public key input");
         }
 
         try (OutputStream encryptedOutput = encryptedDataGenerator.open(output, new byte[4096])) {

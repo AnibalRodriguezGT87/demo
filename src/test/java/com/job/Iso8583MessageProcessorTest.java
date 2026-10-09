@@ -48,5 +48,11 @@ public class Iso8583MessageProcessorTest {
         assertTrue(result.contains("127=1234567890123456789"));
     }
 
-}
+    @Test
+    void process_withMalformedMessage_returnsNull() {
+        Iso8583MessageProcessor processor = new Iso8583MessageProcessor();
 
+        assertNull(processor.process("malformed"));
+    }
+
+}
