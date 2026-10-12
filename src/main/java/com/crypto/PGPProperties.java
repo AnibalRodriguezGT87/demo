@@ -1,4 +1,4 @@
-package com.pgp;
+package com.crypto;
 
 import lombok.Getter;
 import lombok.Setter;

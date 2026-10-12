@@ -12,7 +12,11 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
+
+import java.io.BufferedReader;
 
 /**
  * JobBatchConfiguration class is a configuration class for Spring Batch jobs.
@@ -39,6 +43,18 @@ public class JobBatchConfiguration {
                 .build();
     }
 
+    @Bean
+    public AsyncTaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("batch-");
+        executor.initialize();
+
+        return executor;
+    }
+
     /**
      * This method defines a Step bean that represents a step in the batch job.
      * It takes an Iso8583MessageReader, Iso8583MessageProcessor, Iso8583MessageWriter, and JobRepository as parameters.
@@ -48,6 +64,7 @@ public class JobBatchConfiguration {
      * @param processor the Iso8583MessageProcessor for processing data
      * @param write the Iso8583MessageWriter for writing data
      * @param jobRepo the JobRepository for managing job metadata
+     * @param taskExecutor the AsyncTaskExecutor for managing task execution
      * @return a Step instance
     */
     @Bean
@@ -56,14 +73,16 @@ public class JobBatchConfiguration {
                      Iso8583MessageWriter write,
                      Iso8583MessageReader read,
                      JobRepository jobRepo,
+                     AsyncTaskExecutor  taskExecutor,
                      PlatformTransactionManager transactionManager) {
         return new StepBuilder("making-step", jobRepo)
-                .<String, String>chunk(2)
+                .<BufferedReader, String>chunk(1)
                 .reader(read)
                 .processor(processor)
                 .writer(write)
                 .listener(listener)
                 .transactionManager(transactionManager)
+                .taskExecutor(taskExecutor)
                 .build();
     }
 

@@ -1,443 +1,250 @@
 package com.sftp;
 
 import com.exception.SftpException;
-import com.pgp.PGPProperties;
-import com.pgp.PgpService;
-import org.apache.sshd.sftp.client.SftpClient;
 import org.junit.jupiter.api.Test;
-import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
-import org.springframework.integration.sftp.session.SftpSession;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.Iterator;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentCaptor.forClass;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-class SftpServiceTest {
-
-    private static String createPrivateKeyFile() throws Exception {
-        Path keyPath = Files.createTempFile("pgp-private-key", ".asc");
-        Files.writeString(keyPath, "private-key-placeholder", StandardCharsets.UTF_8);
-        return keyPath.toString();
-    }
-
-    private static String createPublicKeyFile() throws Exception {
-        Path keyPath = Files.createTempFile("pgp-public-key", ".asc");
-        Files.writeString(keyPath, "public-key-placeholder", StandardCharsets.UTF_8);
-        return keyPath.toString();
-    }
-
-    @Test
-    void openSftpSession_opensSession() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
-
-        service.openSftpSession();
-
-        verify(sessionFactory).getSession();
-    }
-
-    @Test
-    void openSftpSession_throwsSftpException_whenSessionCannotBeCreated() {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        when(sessionFactory.getSession()).thenThrow(new RuntimeException("boom"));
-
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
-
-        SftpException exception = assertThrows(SftpException.class, service::openSftpSession);
-        assertTrue(exception.getMessage().contains("Error occurred while opening SFTP connection"));
-    }
-
-    @Test
-    void readFile_readsLinesFromRemoteFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        doAnswer(invocation -> {
-            OutputStream output = invocation.getArgument(1);
-            output.write("first\nsecond\n".getBytes(StandardCharsets.UTF_8));
-            return null;
-        }).when(session).read(eq("upload/data.csv"), any(OutputStream.class));
-
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
-        service.openSftpSession();
-        service.readFile("upload/data.csv");
-
-        assertEquals("first", service.getRowLine());
-        assertEquals("second", service.getRowLine());
-        assertNull(service.getRowLine());
-        assertNotNull(service.getBufferedReader());
-
-        service.closeReader();
-        service.closeSession();
-    }
-
-    @Test
-    void readDecryptedFile_readsAndDecryptsRemoteFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-        PgpService pgpService = mock(PgpService.class);
-        when(pgpService.decrypt(any(), any(), any())).thenReturn(new ByteArrayInputStream("plain\nline\n".getBytes(StandardCharsets.UTF_8)));
-
-        PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPrivateKey(createPrivateKeyFile());
-        pgpProperties.setEnabled(true);
-
-        SftpProperties properties = new SftpProperties();
-        properties.setFileExtension(".pgp");
-        properties.setTempFileExtension(".tmp");
-        properties.setRemoteDirectoryInput("/upload");
-        properties.setRemoteDirectoryOutput("/upload");
-
-        doAnswer(invocation -> {
-            OutputStream output = invocation.getArgument(1);
-            output.write("encrypted".getBytes(StandardCharsets.UTF_8));
-            return null;
-        }).when(session).read(eq("upload/data.pgp"), any(OutputStream.class));
-
-        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
-        service.openSftpSession();
-        service.readFile("upload/data.pgp");
-
-        assertEquals("plain", service.getRowLine());
-        assertEquals("line", service.getRowLine());
-
-        service.closeReader();
-        service.closeSession();
-    }
-
-    @Test
-    void readFirstFile_readsFirstMatchingFileInDirectory() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpClient.DirEntry firstEntry = mock(SftpClient.DirEntry.class);
-        SftpClient.DirEntry secondEntry = mock(SftpClient.DirEntry.class);
-        when(firstEntry.getFilename()).thenReturn("first.csv");
-        when(secondEntry.getFilename()).thenReturn("second.csv");
-        when(session.list("/upload")).thenReturn(new SftpClient.DirEntry[]{firstEntry, secondEntry});
-
-        doAnswer(invocation -> {
-            OutputStream output = invocation.getArgument(1);
-            output.write("first\nsecond\n".getBytes(StandardCharsets.UTF_8));
-            return null;
-        }).when(session).read(eq("/upload/first.csv"), any(OutputStream.class));
-
-        SftpProperties properties = new SftpProperties();
-        properties.setFileExtension(".csv");
-        properties.setRemoteDirectoryInput("/upload");
-        properties.setRemoteDirectoryOutput("/upload");
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
-        service.openSftpSession();
-        service.readFirstFile();
-
-        assertEquals("first", service.getRowLine());
-        service.closeReader();
-        service.closeSession();
-    }
-
-    @Test
-    void readFirstDecryptedFile_readsFirstMatchingEncryptedFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        PgpService pgpService = mock(PgpService.class);
-        when(pgpService.decrypt(any(), any(), any())).thenReturn(new ByteArrayInputStream("secret\n".getBytes(StandardCharsets.UTF_8)));
-
-        PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPrivateKey(createPrivateKeyFile());
-
-        SftpProperties properties = new SftpProperties();
-        properties.setFileExtension(".pgp");
-        properties.setRemoteDirectoryInput("/upload");
-        properties.setRemoteDirectoryOutput("/upload");
-        pgpProperties.setEnabled(true);
-
-        SftpClient.DirEntry ignoredEntry = mock(SftpClient.DirEntry.class);
-        SftpClient.DirEntry encryptedEntry = mock(SftpClient.DirEntry.class);
-        when(ignoredEntry.getFilename()).thenReturn("ignored.txt");
-        when(encryptedEntry.getFilename()).thenReturn("data.pgp");
-        when(session.list("/upload")).thenReturn(new SftpClient.DirEntry[]{ignoredEntry, encryptedEntry});
-
-        doAnswer(invocation -> {
-            OutputStream output = invocation.getArgument(1);
-            output.write("cipher".getBytes(StandardCharsets.UTF_8));
-            return null;
-        }).when(session).read(eq("/upload/data.pgp"), any(OutputStream.class));
-
-        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
-        service.openSftpSession();
-        service.readFirstFile();
-
-        assertEquals("secret", service.getRowLine());
-        service.closeReader();
-        service.closeSession();
-    }
-
-    @Test
-    void setOutputStreamAndWriteSftpFile_writesToRemoteFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryOutput("/upload");
-
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
-        service.openSftpSession();
-        service.setOutputStream();
-        service.setInputStream("first");
-        service.setInputStream("second");
-        service.write("output.csv");
-
-        var captor = forClass(ByteArrayInputStream.class);
-        verify(session).write(captor.capture(), eq("/upload/output.csv"));
-        assertEquals("first\nsecond\n", new String(captor.getValue().readAllBytes(), StandardCharsets.UTF_8));
-
-        service.closeSession();
-    }
-
-    @Test
-    void writeAndEncryptedFile_writesEncryptedDataToRemoteFile() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        PgpService pgpService = mock(PgpService.class);
-        when(pgpService.encrypt(any(), any())).thenReturn(new ByteArrayInputStream("ciphertext".getBytes(StandardCharsets.UTF_8)));
-
-        PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPublicKey(createPublicKeyFile());
-        pgpProperties.setEnabled(true);
-
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryOutput("/upload");
-
-        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
-        service.openSftpSession();
-        service.setOutputStream();
-        service.setInputStream("plain-text");
-        service.write("output.pgp");
-
-        verify(session).write(any(ByteArrayInputStream.class), eq("/upload/output.pgp"));
-        service.closeSession();
-    }
-
-    @Test
-    void writeAndEncryptedFile_throwsSftpException_whenEncryptionFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        PgpService pgpService = mock(PgpService.class);
-        when(pgpService.encrypt(any(), any())).thenThrow(new RuntimeException("encrypt boom"));
-
-        PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPublicKey(createPublicKeyFile());
-        pgpProperties.setEnabled(true);
-
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryOutput("/upload");
-
-        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, pgpService);
-        service.openSftpSession();
-        service.setOutputStream();
-        service.setInputStream("plain-text");
-
-        SftpException exception = assertThrows(SftpException.class, () -> service.write("output.pgp"));
-        assertTrue(exception.getMessage().contains("Error closing SFTP writer"));
-
-        service.closeSession();
-    }
-
-    @Test
-    void setInputStream_throwsSftpException_whenOutputStreamIsNotInitialized() {
-        SftpService service = new SftpService(mock(DefaultSftpSessionFactory.class), new PGPProperties(), new SftpProperties(), mock(PgpService.class));
-
-        SftpException exception = assertThrows(SftpException.class, () -> service.setInputStream("value"));
-        assertTrue(exception.getMessage().contains("Error writing to SFTP file"));
-    }
-
-    @Test
-    void getRowLine_throwsSftpException_whenReaderReadFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
-        service.openSftpSession();
-        service.readFile("upload/data.csv");
-
-        BufferedReader mockedReader = mock(BufferedReader.class);
-        doThrow(new RuntimeException("read boom")).when(mockedReader).readLine();
-        ReflectionTestUtils.setField(service, "reader", mockedReader);
-
-        SftpException exception = assertThrows(SftpException.class, service::getRowLine);
-        assertTrue(exception.getMessage().contains("Error occurred while reading a line from the reader"));
-
-        service.closeSession();
-    }
+public class SftpServiceTest {
 
     @Test
     void readFile_throwsSftpException_whenSessionReadFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
-        doThrow(new RuntimeException("read boom")).when(session).read(eq("upload/data.csv"), any(OutputStream.class));
+        doThrow(new RuntimeException("read boom")).when(session).read(any(String.class), any(OutputStream.class));
 
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        var props = new SftpProperties();
+        props.setRemoteDirectoryInput("/upload");
+        props.setTempFileExtension(".tmp");
+
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, () -> service.readFile("upload/data.csv"));
-        assertTrue(exception.getMessage().contains("Error occurred reading decrypted file"));
-
-        service.closeSession();
+        SftpException ex = assertThrows(SftpException.class, () -> service.readFile("data.csv"));
+        assertTrue(ex.getMessage().contains("Error occurred reading decrypted file"));
     }
 
     @Test
-    void getBufferedReader_returnsNull_whenReaderIsNotInitialized() {
-        SftpService service = new SftpService(mock(DefaultSftpSessionFactory.class), new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+    void readFile_returnsContent_whenSessionReadsSuccessfully() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
 
-        assertNull(service.getBufferedReader());
+        var props = new SftpProperties();
+        props.setRemoteDirectoryInput("/upload");
+        props.setTempFileExtension(".tmp");
+
+        var service = new SftpService(sessionFactory, props);
+        service.openSftpSession();
+
+        try (InputStream in = service.readFile("data.csv")) {
+            assertNotNull(in);
+        }
+
+        verify(session).read(eq("/upload/data.csv"), any(OutputStream.class));
     }
 
     @Test
-    void closeReader_throwsSftpException_whenReaderCloseFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+    void listFiles_filtersOutNonMatchingEntries() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
 
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        var a = mock(org.apache.sshd.sftp.client.SftpClient.DirEntry.class);
+        var b = mock(org.apache.sshd.sftp.client.SftpClient.DirEntry.class);
+        var c = mock(org.apache.sshd.sftp.client.SftpClient.DirEntry.class);
+        when(a.getFilename()).thenReturn("one.csv");
+        when(b.getFilename()).thenReturn("two.txt");
+        when(c.getFilename()).thenReturn("three.csv");
+        when(session.list("/upload")).thenReturn(new org.apache.sshd.sftp.client.SftpClient.DirEntry[]{a, b, c});
+
+        var props = new SftpProperties();
+        props.setRemoteDirectoryInput("/upload");
+        props.setFileExtension(".csv");
+
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
-        service.readFile("upload/data.csv");
+        Iterator<String> it = service.listFiles();
 
-        BufferedReader mockedReader = mock(BufferedReader.class);
-        doThrow(new RuntimeException("close boom")).when(mockedReader).close();
-        ReflectionTestUtils.setField(service, "reader", mockedReader);
+        assertEquals("one.csv", it.next());
+        assertEquals("three.csv", it.next());
+        assertFalse(it.hasNext());
+    }
 
-        SftpException exception = assertThrows(SftpException.class, service::closeReader);
-        assertTrue(exception.getMessage().contains("Error occurred while closing the reader"));
+    @Test
+    void writeString_writesToConfiguredRemotePath() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        var props = new SftpProperties();
+        props.setRemoteDirectoryOutput("/output");
+
+        var service = new SftpService(sessionFactory, props);
+        service.openSftpSession();
+
+        service.write("hello", "file.csv");
+
+        verify(session).write(any(InputStream.class), eq("/output/file.csv"));
+    }
+
+    @Test
+    void writeInputStream_callsSessionWrite() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        var props = new SftpProperties();
+        props.setRemoteDirectoryOutput("/output");
+
+        var service = new SftpService(sessionFactory, props);
+        service.openSftpSession();
+        service.write(new ByteArrayInputStream("payload".getBytes(StandardCharsets.UTF_8)), "/output/file.csv");
+
+        verify(session).write(any(InputStream.class), eq("/output/file.csv"));
+    }
+
+    @Test
+    void openSftpSession_throwsSftpException_whenFactoryFails() {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        when(sessionFactory.getSession()).thenThrow(new RuntimeException("session boom"));
+
+        var service = new SftpService(sessionFactory, new SftpProperties());
+
+        SftpException ex = assertThrows(SftpException.class, service::openSftpSession);
+        assertTrue(ex.getMessage().contains("Error occurred while opening SFTP connection"));
+    }
+
+    @Test
+    void closeSession_closesOpenSession() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
+        when(sessionFactory.getSession()).thenReturn(session);
+
+        var service = new SftpService(sessionFactory, new SftpProperties());
+        service.openSftpSession();
 
         service.closeSession();
+
+        verify(session).close();
+    }
+
+    @Test
+    void closeSession_isNoOp_whenSessionWasNeverOpened() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var service = new SftpService(sessionFactory, new SftpProperties());
+
+        service.closeSession();
+
+        verifyNoInteractions(sessionFactory);
     }
 
     @Test
     void closeSession_throwsSftpException_whenSessionCloseFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
         doThrow(new RuntimeException("close boom")).when(session).close();
 
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), new SftpProperties(), mock(PgpService.class));
+        var service = new SftpService(sessionFactory, new SftpProperties());
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::closeSession);
-        assertTrue(exception.getMessage().contains("Error occurred while closing the sftp session"));
+        SftpException ex = assertThrows(SftpException.class, service::closeSession);
+        assertTrue(ex.getMessage().contains("Error occurred while closing the sftp session"));
     }
 
     @Test
-    void readFirstFile_throwsSftpException_whenDirectoryListingFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+    void listFiles_throwsSftpException_whenListingFails() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
-        when(session.list("/upload")).thenThrow(new RuntimeException("listing boom"));
+        when(session.list("/upload")).thenThrow(new RuntimeException("list boom"));
 
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryInput("/upload");
-        properties.setRemoteDirectoryOutput("/upload");
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
+        var props = new SftpProperties();
+        props.setRemoteDirectoryInput("/upload");
+        props.setFileExtension(".csv");
+
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
-        assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
-
-        service.closeSession();
+        SftpException ex = assertThrows(SftpException.class, service::listFiles);
+        assertTrue(ex.getMessage().contains("Error occurred while listing files in remote directory"));
     }
 
     @Test
-    void readFirstDecryptedFile_throwsSftpException_whenDirectoryListingFails() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+    void writeInputStream_throwsSftpException_whenWriteFails() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
-        when(session.list("/upload")).thenThrow(new RuntimeException("listing boom"));
+        doThrow(new RuntimeException("write boom")).when(session).write(any(InputStream.class), any(String.class));
 
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryInput("/upload");
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
+        var props = new SftpProperties();
+        props.setRemoteDirectoryOutput("/output");
+
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
-        assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
-
-        service.closeSession();
+        SftpException ex = assertThrows(SftpException.class,
+                () -> service.write(new ByteArrayInputStream("payload".getBytes(StandardCharsets.UTF_8)), "/output/file.csv"));
+        assertTrue(ex.getMessage().contains("Error writing SFTP writer"));
     }
 
     @Test
-    void readFirstFile_throwsSftpException_whenDirectoryIsEmpty() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+    void listFiles_returnsEmptyIterator_whenNoEntryMatchesExtension() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
-        when(session.list("/upload")).thenReturn(new SftpClient.DirEntry[0]);
 
-        SftpProperties properties = new SftpProperties();
-        properties.setRemoteDirectoryInput("/upload");
-        SftpService service = new SftpService(sessionFactory, new PGPProperties(), properties, mock(PgpService.class));
+        var entry = mock(org.apache.sshd.sftp.client.SftpClient.DirEntry.class);
+        when(entry.getFilename()).thenReturn("notes.txt");
+        when(session.list("/upload")).thenReturn(new org.apache.sshd.sftp.client.SftpClient.DirEntry[]{entry});
+
+        var props = new SftpProperties();
+        props.setRemoteDirectoryInput("/upload");
+        props.setFileExtension(".csv");
+
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
-        assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
-
-        service.closeSession();
+        assertFalse(service.listFiles().hasNext());
     }
 
     @Test
-    void readFirstDecryptedFile_throwsSftpException_whenNoEncryptedFilesExist() throws Exception {
-        DefaultSftpSessionFactory sessionFactory = mock(DefaultSftpSessionFactory.class);
-        SftpSession session = mock(SftpSession.class);
+    void sftpException_constructorsPreserveMessageAndCause() {
+        RuntimeException cause = new RuntimeException("root cause");
+
+        SftpException withMessage = new SftpException("message");
+        SftpException withCause = new SftpException("message", cause);
+
+        assertEquals("message", withMessage.getMessage());
+        assertEquals("message", withCause.getMessage());
+        assertSame(cause, withCause.getCause());
+    }
+
+    @Test
+    void writeString_throwsWhenWriteFails() throws Exception {
+        var sessionFactory = mock(org.springframework.integration.sftp.session.DefaultSftpSessionFactory.class);
+        var session = mock(org.springframework.integration.sftp.session.SftpSession.class);
         when(sessionFactory.getSession()).thenReturn(session);
+        doThrow(new RuntimeException("fail")).when(session).write(any(InputStream.class), any(String.class));
 
-        SftpClient.DirEntry plainFile = mock(SftpClient.DirEntry.class);
-        when(plainFile.getFilename()).thenReturn("notes.txt");
-        when(session.list("/upload")).thenReturn(new SftpClient.DirEntry[]{plainFile});
+        var props = new SftpProperties();
+        props.setRemoteDirectoryOutput("/output");
 
-        PGPProperties pgpProperties = new PGPProperties();
-        pgpProperties.setPrivateKey("data.csv");
-        pgpProperties.setEnabled(true);
-
-        SftpProperties properties = new SftpProperties();
-        properties.setFileExtension(".pgp");
-        properties.setRemoteDirectoryInput("/upload");
-
-        SftpService service = new SftpService(sessionFactory, pgpProperties, properties, mock(PgpService.class));
+        var service = new SftpService(sessionFactory, props);
         service.openSftpSession();
 
-        SftpException exception = assertThrows(SftpException.class, service::readFirstFile);
-        assertTrue(exception.getMessage().contains("Error occurred while listing files in remote directory"));
-
-        service.closeSession();
+        SftpException ex = assertThrows(SftpException.class, () -> service.write("hello", "file.csv"));
+        assertTrue(ex.getMessage().contains("Error closing SFTP writer"));
     }
 }

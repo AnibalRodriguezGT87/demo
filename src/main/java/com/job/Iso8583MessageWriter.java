@@ -1,14 +1,17 @@
 package com.job;
 
 import com.exception.BatchWriteException;
-import com.exception.SftpException;
-import com.sftp.SftpService;
+import com.orchestrator.FileOrchestrator;
+import com.orchestrator.FileOrchestratorException;
 import jakarta.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.infrastructure.item.ItemStreamWriter;
 import org.springframework.stereotype.Component;
+
+import java.util.Date;
 
 /**
  * Iso8583MessageWriter is a Spring Batch ItemStreamWriter that writes ISO 8583 messages to an SFTP server.
@@ -17,13 +20,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @StepScope
+@RequiredArgsConstructor
 public class Iso8583MessageWriter implements ItemStreamWriter<String> {
-
-    private final SftpService sftpService;
-
-    public Iso8583MessageWriter(SftpService sftpService) {
-        this.sftpService = sftpService;
-    }
+    private final FileOrchestrator fileOrchestrator;
 
     /**
      * Opens the SFTP connection and prepares to write data to the output file.
@@ -33,8 +32,7 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
     @Override
     public void open(@Nonnull ExecutionContext executionContext)  {
         try {
-            sftpService.openSftpSession();
-            sftpService.setOutputStream();
+            fileOrchestrator.openSFTConnection();
         } catch (Exception e) {
             throw new RuntimeException("Error opening SFTP session", e);
         }
@@ -50,7 +48,8 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
     public void write(@Nonnull Chunk<? extends String> chunk) throws BatchWriteException {
         try {
             for (String line : chunk.getItems()) {
-                sftpService.setInputStream(line);
+                String fileName = "output"+new Date()+".csv.pgp";
+                fileOrchestrator.write(fileName, line);
             }
         } catch (Exception e) {
             throw new BatchWriteException("Error writing to SFTP file", e);
@@ -63,10 +62,8 @@ public class Iso8583MessageWriter implements ItemStreamWriter<String> {
     @Override
     public void close() {
         try {
-            String fileName = "output.csv.pgp";
-            sftpService.write(fileName);
-            sftpService.closeSession();
-        } catch (SftpException e) {
+            fileOrchestrator.closeSFTConnection();
+        } catch (FileOrchestratorException e) {
             throw new RuntimeException(e);
         }
     }

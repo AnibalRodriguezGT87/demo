@@ -125,8 +125,9 @@ sftpService.closeSession();
 
 ## Decrypt a file using PGP Service
 Previously you need to add the PGP configuration: [PGP Configuration](#application-properties)
+
 ```java
-import com.pgp.PgpService;
+import com.crypto.PgpService;
 
 //Inject the PgpService into your class
 private final PgpService pgpService;
@@ -135,14 +136,17 @@ private final PgpService pgpService;
 // privateKeyStream InputStream containing the PGP private key
 // passphrase       Passphrase for the private key
 // @return          InputStream containing the decrypted data
-pgpService.decryptFile(encryptedStream, privateKeyStream, passphrase);
+pgpService.
+
+        decryptFile(encryptedStream, privateKeyStream, passphrase);
 ```
 ---
 
 ## Encrypt a file using PGP Service
 Previously you need to add the PGP configuration: [PGP Configuration](#application-properties)
+
 ```java
-import com.pgp.PgpService;
+import com.crypto.PgpService;
 
 //Inject the PgpService into your class
 private final PgpService pgpService;
@@ -150,6 +154,8 @@ private final PgpService pgpService;
 // @plainText        InputStream containing the plain text data
 // @ppublicKeyInput  InputStream containing the PGP public key
 // @return           InputStream containing the encrypted data
-pgpService.encryptFile(plainText, ppublicKeyInput);
+pgpService.
+
+        encryptFile(plainText, ppublicKeyInput);
 ```
 ---
