@@ -3,44 +3,43 @@ package com.orchestrator;
 import com.sftp.SftpProperties;
 import com.sftp.SftpService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * FileOrchestrator is a service class that orchestrates file operations with an SFTP server.
+ * It provides methods to list files, read files, and write files to the SFTP server.
+ * The class handles exceptions and wraps them in a custom FileOrchestratorException for better error reporting.
+ */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class FileOrchestrator {
 
     private final SftpService sftpService;
     private final SftpProperties sftpProperties;
 
-    /**
-     * Returns the list of files retrieved from the SFTP server.
-     *
-     * @return a list of file names
-     */
-    public List<String> getListFiles() {
-        try {
-            return sftpService.listRemoteFiles();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     /**
-     * Retrieves a file from the SFTP server and returns a BufferedReader for reading the file's contents.
+     * Synchronizes the remote directory on the SFTP server by downloading all files from the remote directory to the local directory.
      *
-     * @param fileName the name of the file to retrieve
-     * @return a BufferedReader for reading the file's contents
-     * @throws FileOrchestratorException if an error occurs during file retrieval
      */
-    public BufferedReader getFileReader(String fileName) throws FileOrchestratorException {
+    public void synchronizeRemoteDirectory() {
         try {
-            return sftpService.readFile(fileName);
-        } catch (Exception e){
-            throw new FileOrchestratorException("Error occurred while reading file: " + e.getMessage(), e);
+            List<String> remoteFiles = sftpService.listRemoteFiles();
+            if (remoteFiles.isEmpty()) {
+                return;
+            }
+
+            for (String file : sftpService.listRemoteFiles()) {
+                log.info("Processing remote file: {}", file);
+                sftpService.downloadFile(file);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 

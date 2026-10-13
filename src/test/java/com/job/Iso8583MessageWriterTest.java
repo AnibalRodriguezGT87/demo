@@ -9,9 +9,7 @@ import org.springframework.batch.infrastructure.item.Chunk;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -50,6 +48,6 @@ class Iso8583MessageWriterTest {
                 writer.write(new Chunk<>(List.of("line"))));
 
         assertTrue(exception.getMessage().contains("Error writing to SFTP file"));
-        assertTrue(exception.getCause() instanceof FileOrchestratorException);
+        assertInstanceOf(FileOrchestratorException.class, exception.getCause());
     }
 }

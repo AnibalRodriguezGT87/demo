@@ -21,6 +21,8 @@ public class SftpProperties {
     private String password;
     private String fileExtension = ".gpg";
     private String tempFileExtension = ".txt";
+    private String localDirectory;
+    private String knownHosts;
     private String privateKey;
     private String privateKeyPassphrase;
     private String remoteDirectoryInput;

@@ -11,7 +11,6 @@ import org.springframework.batch.infrastructure.item.ItemStreamReader;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
-import java.util.Iterator;
 
 /**
  * Iso8583MessageReader is a Spring Batch ItemReader that reads ISO 8583 messages from an SFTP server.
@@ -24,7 +23,6 @@ import java.util.Iterator;
 public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 
     private final FileOrchestrator fileOrchestrator;
-    private Iterator<String> readers;
     /**
      * Opens the SFTP connection and prepares to read the decrypted file.
      *
@@ -32,7 +30,7 @@ public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
     @Override
     public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
         try {
-            readers = fileOrchestrator.getListFiles().iterator();
+            fileOrchestrator.synchronizeRemoteDirectory();
         } catch (Exception e) {
             throw new ItemStreamException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
         }
@@ -46,13 +44,6 @@ public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
      */
     @Override
     public BufferedReader read() throws BatchReadException {
-        try {
-            if (readers.hasNext()) {
-                return fileOrchestrator.getFileReader(readers.next());
-            }
-            return null;
-        } catch (Exception e) {
-            throw new BatchReadException("Error occurred while reading from SFTP file:" + e.getMessage(), e);
-        }
+        return null;
     }
 }

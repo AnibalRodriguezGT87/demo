@@ -38,122 +38,97 @@ public class PgpService {
     }
 
     /**
-     * Decrypts the given PGP encrypted input stream using the private key and passphrase specified in the PGP properties.
+     * Decrypts the given encrypted input stream using the private key and passphrase specified in the PGP properties.
      *
-     * @param encryptedStream InputStream containing the PGP encrypted data
-     * @return InputStream containing the decrypted data
+     * @param encryptedStream the input stream containing the encrypted data
+     * @param decryptedOutput the output stream where the decrypted data will be written
      */
-    public InputStream decrypt(InputStream encryptedStream) {
+    public void decrypt(InputStream encryptedStream, OutputStream decryptedOutput) {
+
         try {
-            String passphrase = pgpProperties.getPassphrase();
-            InputStream privateKeyStream = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()));
 
-            PGPSecretKeyRingCollection secretKeyRings =
-                    new PGPSecretKeyRingCollection(
-                            PGPUtil.getDecoderStream(privateKeyStream),
-                            new JcaKeyFingerprintCalculator());
+            try (InputStream privateKeyStream = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()))) {
 
-            PGPObjectFactory pgpFactory =
-                    new PGPObjectFactory(
-                            PGPUtil.getDecoderStream(encryptedStream),
-                            new JcaKeyFingerprintCalculator());
-
-            Object obj = pgpFactory.nextObject();
-
-            if (obj == null) {
-                throw new IllegalStateException("No encrypted data found in PGP message");
-            }
-
-            PGPEncryptedDataList encryptedDataList;
-
-            if (obj instanceof PGPEncryptedDataList) {
-                encryptedDataList = (PGPEncryptedDataList) obj;
-            } else {
-                Object nextObject = pgpFactory.nextObject();
-                if (!(nextObject instanceof PGPEncryptedDataList)) {
-                    throw new IllegalStateException("No encrypted data list found in PGP message");
-                }
-                encryptedDataList = (PGPEncryptedDataList) nextObject;
-            }
-
-            PGPPublicKeyEncryptedData encryptedData = null;
-            PGPPrivateKey privateKey = null;
-
-            Iterator<?> iterator = encryptedDataList.getEncryptedDataObjects();
-
-            while (iterator.hasNext()) {
-                PGPPublicKeyEncryptedData current = (PGPPublicKeyEncryptedData) iterator.next();
-                log.info( "Encrypted Key ID: {}", Long.toHexString(current.getKeyIdentifier().getKeyId()));
-                PGPSecretKey secretKey = secretKeyRings.getSecretKey(current.getKeyIdentifier().getKeyId());
-
-                if (secretKey != null) {
-                    log.info("Matched Secret Key ID: {}", Long.toHexString(secretKey.getKeyID()));
-                    log.info("Algorithm: {}", secretKey.getPublicKey().getAlgorithm());
-                    privateKey = secretKey.extractPrivateKey(
-                                    new JcePBESecretKeyDecryptorBuilder()
-                                            .setProvider("BC")
-                                            .build(passphrase.toCharArray()));
-
-                    encryptedData = current;
-                    break;
-                }
-            }
-
-            if (privateKey == null) {
-                throw new IllegalStateException("No matching private key found");
-            }
-
-            PublicKeyDataDecryptorFactory decryptorFactory =
-                    new JcePublicKeyDataDecryptorFactoryBuilder()
-                            .setProvider("BC")
-                            .build(privateKey);
-
-            InputStream clearStream = encryptedData.getDataStream(decryptorFactory);
-
-            PGPObjectFactory plainFactory =
-                    new PGPObjectFactory(
-                            clearStream,
-                            new JcaKeyFingerprintCalculator());
-
-            Object message = plainFactory.nextObject();
-
-            if (message instanceof PGPCompressedData compressedData) {
-
-                PGPObjectFactory compressedFactory =
-                        new PGPObjectFactory(
-                                compressedData.getDataStream(),
+                PGPSecretKeyRingCollection secretKeyRings =
+                        new PGPSecretKeyRingCollection(
+                                PGPUtil.getDecoderStream(privateKeyStream),
                                 new JcaKeyFingerprintCalculator());
 
-                message = compressedFactory.nextObject();
-                plainFactory = compressedFactory;
+                PGPObjectFactory pgpFactory =
+                        new PGPObjectFactory(
+                                PGPUtil.getDecoderStream(encryptedStream),
+                                new JcaKeyFingerprintCalculator());
+
+                Object obj = pgpFactory.nextObject();
+
+                PGPEncryptedDataList encryptedDataList =
+                        (obj instanceof PGPEncryptedDataList)
+                                ? (PGPEncryptedDataList) obj
+                                : (PGPEncryptedDataList) pgpFactory.nextObject();
+
+                PGPPublicKeyEncryptedData encryptedData = null;
+                PGPPrivateKey privateKey = null;
+
+                Iterator<?> iterator = encryptedDataList.getEncryptedDataObjects();
+                String passphrase = pgpProperties.getPassphrase();
+
+                while (iterator.hasNext()) {
+                    PGPPublicKeyEncryptedData current = (PGPPublicKeyEncryptedData) iterator.next();
+
+                    PGPSecretKey secretKey =
+                            secretKeyRings.getSecretKey(
+                                    current.getKeyIdentifier().getKeyId());
+
+                    if (secretKey != null) {
+                        privateKey = secretKey.extractPrivateKey(
+                                        new JcePBESecretKeyDecryptorBuilder()
+                                                .setProvider("BC")
+                                                .build(passphrase.toCharArray()));
+                        encryptedData = current;
+                        break;
+                    }
+                }
+
+                if (privateKey == null) {
+                    throw new IllegalStateException("No matching private key found");
+                }
+
+                PublicKeyDataDecryptorFactory decryptorFactory =
+                        new JcePublicKeyDataDecryptorFactoryBuilder()
+                                .setProvider("BC")
+                                .build(privateKey);
+
+                InputStream clearStream = encryptedData.getDataStream(decryptorFactory);
+
+                PGPObjectFactory plainFactory = new PGPObjectFactory(
+                        clearStream,
+                        new JcaKeyFingerprintCalculator());
+
+                Object message = plainFactory.nextObject();
+
+                if (message instanceof PGPCompressedData compressedData) {
+                    plainFactory = new PGPObjectFactory(compressedData.getDataStream(), new JcaKeyFingerprintCalculator());
+                    message = plainFactory.nextObject();
+                }
+
+                while (message != null) {
+                    if (message instanceof PGPLiteralData literalData) {
+                        try (InputStream literalInputStream = literalData.getInputStream()) {
+                            literalInputStream.transferTo(decryptedOutput);
+                        }
+                    }
+                    message = plainFactory.nextObject();
+                }
+
+                if (encryptedData.isIntegrityProtected()) {
+                    if (!encryptedData.verify()) {
+                        throw new SecurityException("PGP integrity verification failed");
+                    }
+                }
             }
 
-            while (message != null) {
-                log.info("PGP Object Type: {}", message.getClass().getName());
-
-                if (message instanceof PGPLiteralData literalData) {
-                    InputStream literalInputStream = literalData.getInputStream();
-                    ByteArrayOutputStream output = new ByteArrayOutputStream();
-                    literalInputStream.transferTo(output);
-
-                    return new ByteArrayInputStream(output.toByteArray());
-                }
-
-                if (message instanceof PGPOnePassSignatureList) {
-                    log.info("PGP Signature detected");
-                }
-
-                if (message instanceof PGPSignatureList) {
-                    log.info("PGP Signature list detected");
-                }
-                message = plainFactory.nextObject();
-            }
-
-            throw new IllegalStateException("No PGPLiteralData found in PGP message");
-        } catch (IllegalStateException e) {
-            throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to decrypt PGP content with the configured private key", e);
+            throw new IllegalStateException("Failed to decrypt PGP content", e);
         }
     }
 

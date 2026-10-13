@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.sshd.sftp.client.SftpClient;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
@@ -33,28 +33,35 @@ public class SftpService {
     private final PgpService pgpService;
 
     /**
-     * Reads a file from the SFTP server and returns a BufferedReader for the file's contents.
-     * The file is temporarily stored on the local filesystem before being returned as a BufferedReader.
+     * Reads a file from the SFTP server. If PGP encryption is enabled, the file will be decrypted before being saved locally.
      *
-     * @param inputFile  the name of the file to read
-     * @return a BufferedReader for reading the file's contents
+     * @param inputFile the name of the file to read from the SFTP server
+     * @throws IOException if an error occurs while reading or decrypting the file
      */
-    public BufferedReader readFile(String inputFile) throws IOException {
-        return sftpTemplate.execute(session -> {
-            Path tempFile = Files.createTempFile("sftp-", sftpProperties.getTempFileExtension());
+    public void downloadFile(String inputFile) throws IOException {
+        sftpTemplate.execute(session -> {
+            Path encryptedFile = Files.createTempFile("sftp-", sftpProperties.getFileExtension());
             String remoteFilePath = sftpProperties.getRemoteDirectoryInput() + "/" + inputFile;
-            try (OutputStream os = Files.newOutputStream(tempFile)) {
+
+            try (OutputStream os = Files.newOutputStream(encryptedFile)) {
                 session.read(remoteFilePath, os);
             }
 
             if (pgpProperties.isEnabled()) {
-                InputStream decryptedInput = pgpService.decrypt(Files.newInputStream(tempFile));
-                Path decryptedFile = Files.createTempFile("sftp-", sftpProperties.getTempFileExtension());
-                Files.copy(decryptedInput, decryptedFile, StandardCopyOption.REPLACE_EXISTING);
-                return Files.newBufferedReader(decryptedFile);
-            }
+                Path decryptedFile = Paths.get(
+                        sftpProperties.getLocalDirectory(),
+                        inputFile.replace(sftpProperties.getFileExtension(), sftpProperties.getTempFileExtension()));
 
-            return Files.newBufferedReader(tempFile);
+                try (InputStream encryptedInput = Files.newInputStream(encryptedFile);
+                     OutputStream decryptedOutput = Files.newOutputStream(decryptedFile)) {
+                    pgpService.decrypt(encryptedInput, decryptedOutput);
+                }
+                Files.deleteIfExists(encryptedFile);
+            } else {
+                Path destinationFile = Paths.get(sftpProperties.getLocalDirectory(), inputFile);
+                Files.move(encryptedFile, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return null;
         });
     }
 

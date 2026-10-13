@@ -30,6 +30,7 @@ public class SftpConfigService {
         factory.setPort(properties.getPort());
         factory.setUser(properties.getUser());
         factory.setAllowUnknownKeys(true);
+//        factory.setKnownHostsResource(new FileSystemResource(properties.getKnownHosts()));
 
         if (properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank()) {
             factory.setPrivateKey(new FileSystemResource(properties.getPrivateKey()));
