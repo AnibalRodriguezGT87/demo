@@ -5,22 +5,27 @@ import com.crypto.PgpService;
 import com.exception.SftpException;
 import org.apache.sshd.sftp.client.SftpClient;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.integration.file.remote.session.Session;
 import org.springframework.integration.file.remote.session.SessionFactory;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-public class SftpServiceTest {
+class SftpServiceTest {
+
+    @TempDir
+    Path tempDir;
 
     @Test
     void sftpException_preservesMessageAndCause() {
@@ -35,125 +40,86 @@ public class SftpServiceTest {
     }
 
     @Test
-    void readFile_returnsContent_whenSessionReadsSuccessfully() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
+    void downloadFile_movesDownloadedFile_whenPgpIsDisabled() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
         doAnswer(invocation -> {
-            OutputStream os = invocation.getArgument(1);
-            os.write("hello".getBytes(StandardCharsets.UTF_8));
+            OutputStream output = invocation.getArgument(1);
+            output.write("file contents".getBytes(StandardCharsets.UTF_8));
             return null;
-        }).when(session).read(eq("/upload/data.csv"), any(OutputStream.class));
+        }).when(session).read(eq(tempDir + "/data.gpg"), any(OutputStream.class));
 
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-        props.setTempFileExtension(".tmp");
+        SftpService service = service(session, new PGPProperties(), mock(PgpService.class));
 
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
+        service.downloadFile(tempDir.toString(), tempDir.toString(), "data.gpg");
 
-        try (BufferedReader reader = service.readFile("data.csv")) {
-            assertEquals("hello", reader.readLine());
-        }
+        assertEquals("file contents", Files.readString(tempDir.resolve("data.gpg")));
+        verify(session).read(eq(tempDir + "/data.gpg"), any(OutputStream.class));
     }
 
     @Test
-    void readFile_throwsRuntimeException_whenSessionReadFails() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-        doThrow(new RuntimeException("read boom")).when(session).read(anyString(), any(OutputStream.class));
-
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-        props.setTempFileExtension(".tmp");
-
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
-
-        assertThrows(RuntimeException.class, () -> service.readFile("data.csv"));
-    }
-
-    @Test
-    void readFile_decryptsWhenPgpEnabled() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
+    void downloadFile_decryptsDownloadedFile_whenPgpIsEnabled() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
         doAnswer(invocation -> {
-            OutputStream os = invocation.getArgument(1);
-            os.write("encrypted".getBytes(StandardCharsets.UTF_8));
+            OutputStream output = invocation.getArgument(1);
+            output.write("encrypted".getBytes(StandardCharsets.UTF_8));
             return null;
-        }).when(session).read(eq("/upload/data.csv"), any(OutputStream.class));
+        }).when(session).read(eq(tempDir + "/data.gpg"), any(OutputStream.class));
 
         PGPProperties pgpProperties = new PGPProperties();
         pgpProperties.setEnabled(true);
         PgpService pgpService = mock(PgpService.class);
-        when(pgpService.decrypt(any(InputStream.class))).thenReturn(new ByteArrayInputStream("decrypted".getBytes(StandardCharsets.UTF_8)));
+        doAnswer(invocation -> {
+            InputStream encrypted = invocation.getArgument(0);
+            OutputStream decrypted = invocation.getArgument(1);
+            assertEquals("encrypted", new String(encrypted.readAllBytes(), StandardCharsets.UTF_8));
+            decrypted.write("decrypted".getBytes(StandardCharsets.UTF_8));
+            return null;
+        }).when(pgpService).decrypt(any(InputStream.class), any(OutputStream.class));
 
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-        props.setTempFileExtension(".tmp");
+        SftpService service = service(session, pgpProperties, pgpService);
 
-        SftpService service = new SftpService(props, pgpProperties, new SftpTemplate(sessionFactory), pgpService);
+        service.downloadFile(tempDir.toString(), tempDir.toString(), "data.gpg");
 
-        try (BufferedReader reader = service.readFile("data.csv")) {
-            assertEquals("decrypted", reader.readLine());
-        }
+        assertEquals("decrypted", Files.readString(tempDir.resolve("data.txt")));
+        verify(pgpService).decrypt(any(InputStream.class), any(OutputStream.class));
     }
 
     @Test
-    void listRemoteFiles_filtersOutNonMatchingEntries() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
+    void downloadFile_propagatesReadFailure() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
+        doThrow(new IOException("read failed"))
+                .when(session).read(eq(tempDir + "/data.gpg"), any(OutputStream.class));
 
-        SftpClient.DirEntry a = mock(SftpClient.DirEntry.class);
-        SftpClient.DirEntry b = mock(SftpClient.DirEntry.class);
-        SftpClient.DirEntry c = mock(SftpClient.DirEntry.class);
-        when(a.getFilename()).thenReturn("one.csv");
-        when(b.getFilename()).thenReturn("two.txt");
-        when(c.getFilename()).thenReturn("three.csv");
-        when(session.list("/upload")).thenReturn(new SftpClient.DirEntry[]{a, b, c});
+        SftpService service = service(session, new PGPProperties(), mock(PgpService.class));
 
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-        props.setFileExtension(".csv");
-
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
-
-        assertEquals(List.of("one.csv", "three.csv"), service.listRemoteFiles());
+        IOException exception = assertThrows(IOException.class,
+                () -> service.downloadFile(tempDir.toString(), tempDir.toString(), "data.gpg"));
+        assertEquals("read failed", exception.getMessage());
     }
 
     @Test
-    void listRemoteFiles_throwsRuntimeException_whenListingFails() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-        when(session.list("/upload")).thenThrow(new RuntimeException("list boom"));
+    void listRemoteFiles_filtersNullBlankAndUnsupportedNames() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
+        SftpClient.DirEntry csv = entry("one.csv");
+        SftpClient.DirEntry text = entry("two.txt");
+        SftpClient.DirEntry unsupported = entry("three.md");
+        SftpClient.DirEntry blank = entry(" ");
+        SftpClient.DirEntry withoutName = entry(null);
+        when(session.list(tempDir.toString()))
+                .thenReturn(new SftpClient.DirEntry[]{csv, text, unsupported, blank, withoutName});
 
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-        props.setFileExtension(".csv");
+        SftpProperties properties = properties();
+        properties.setFileExtension(".csv,.txt");
+        SftpService service = new SftpService(properties, new PGPProperties(),
+                new SftpTemplate(sessionFactory(session)), mock(PgpService.class));
 
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
-
-        assertThrows(RuntimeException.class, () -> service.listRemoteFiles());
+        assertEquals(List.of("one.csv", "two.txt"), service.listRemoteFiles());
     }
 
     @Test
-    void write_writesPlainTextData_whenPgpDisabled() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
+    void write_writesPlainText_whenPgpIsDisabled() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
+        SftpService service = service(session, new PGPProperties(), mock(PgpService.class));
 
         service.write("hello", "file.csv");
 
@@ -161,21 +127,14 @@ public class SftpServiceTest {
     }
 
     @Test
-    void write_encryptsAndWrites_whenPgpEnabled() throws Exception {
-        SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
-        when(sessionFactory.getSession()).thenReturn(session);
-
+    void write_encryptsAndWrites_whenPgpIsEnabled() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
         PGPProperties pgpProperties = new PGPProperties();
         pgpProperties.setEnabled(true);
         PgpService pgpService = mock(PgpService.class);
-        when(pgpService.encrypt("hello")).thenReturn(new ByteArrayInputStream("encrypted".getBytes(StandardCharsets.UTF_8)));
-
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
-
-        SftpService service = new SftpService(props, pgpProperties, new SftpTemplate(sessionFactory), pgpService);
+        when(pgpService.encrypt("hello")).thenReturn(
+                new ByteArrayInputStream("encrypted".getBytes(StandardCharsets.UTF_8)));
+        SftpService service = service(session, pgpProperties, pgpService);
 
         service.write("hello", "file.csv");
 
@@ -184,18 +143,67 @@ public class SftpServiceTest {
     }
 
     @Test
-    void write_throwsRuntimeException_whenWriteFails() throws Exception {
+    void write_wrapsWriteFailureInRuntimeException() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
+        doThrow(new IOException("write failed")).when(session)
+                .write(any(InputStream.class), anyString());
+        SftpService service = service(session, new PGPProperties(), mock(PgpService.class));
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> service.write("hello", "file.csv"));
+
+        SftpException cause = assertInstanceOf(SftpException.class, exception.getCause());
+        assertEquals("Error occurred while writing file: write failed", cause.getMessage());
+        assertInstanceOf(IOException.class, cause.getCause());
+    }
+
+    @Test
+    void write_wrapsEncryptionFailureInRuntimeException() throws Exception {
+        Session<SftpClient.DirEntry> session = mockSession();
+        PGPProperties pgpProperties = new PGPProperties();
+        pgpProperties.setEnabled(true);
+        PgpService pgpService = mock(PgpService.class);
+        when(pgpService.encrypt("hello")).thenThrow(new IOException("encryption failed"));
+        SftpService service = service(session, pgpProperties, pgpService);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> service.write("hello", "file.csv"));
+
+        SftpException cause = assertInstanceOf(SftpException.class, exception.getCause());
+        assertEquals("Error occurred while writing file: encryption failed", cause.getMessage());
+        assertInstanceOf(IOException.class, cause.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Session<SftpClient.DirEntry> mockSession() {
+        return mock(Session.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private SessionFactory<SftpClient.DirEntry> sessionFactory(Session<SftpClient.DirEntry> session)
+            throws IOException {
         SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
-        Session<SftpClient.DirEntry> session = mock(Session.class);
         when(sessionFactory.getSession()).thenReturn(session);
-        doThrow(new RuntimeException("write boom")).when(session).write(any(InputStream.class), anyString());
+        return sessionFactory;
+    }
 
-        SftpProperties props = new SftpProperties();
-        props.setRemoteDirectoryInput("/upload");
+    private SftpService service(Session<SftpClient.DirEntry> session, PGPProperties pgpProperties,
+                                PgpService pgpService) throws IOException {
+        return new SftpService(properties(), pgpProperties,
+                new SftpTemplate(sessionFactory(session)), pgpService);
+    }
 
-        SftpService service = new SftpService(props, new PGPProperties(), new SftpTemplate(sessionFactory), mock(PgpService.class));
+    private SftpProperties properties() {
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryInput(tempDir.toString());
+        properties.setFileExtension(".gpg");
+        properties.setTempFileExtension(".txt");
+        return properties;
+    }
 
-        assertThrows(RuntimeException.class, () -> service.write("hello", "file.csv"));
+    private SftpClient.DirEntry entry(String filename) {
+        SftpClient.DirEntry entry = mock(SftpClient.DirEntry.class);
+        when(entry.getFilename()).thenReturn(filename);
+        return entry;
     }
 }

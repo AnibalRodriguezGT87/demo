@@ -4,52 +4,71 @@ import com.sftp.SftpProperties;
 import com.sftp.SftpService;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.StringReader;
+import java.io.IOException;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 class FileOrchestratorTest {
 
     @Test
-    void getListFiles_returnsValuesFromSftpService() throws Exception {
+    void synchronizeRemoteDirectory_returnsWhenNoFilesAreFound() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        when(sftpService.listRemoteFiles()).thenReturn(List.of());
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryInput("/remote/input");
+        FileOrchestrator orchestrator = new FileOrchestrator(sftpService, properties);
+
+        orchestrator.synchronizeRemoteDirectory();
+
+        verify(sftpService).listRemoteFiles();
+        verify(sftpService, never()).downloadFile(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void synchronizeRemoteDirectory_downloadsFilesFromRemoteDirectory() throws Exception {
         SftpService sftpService = mock(SftpService.class);
         when(sftpService.listRemoteFiles()).thenReturn(List.of("a.txt", "b.txt"));
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryInput("/remote/input");
+        properties.setLocalDirectory("/local");
+        FileOrchestrator orchestrator = new FileOrchestrator(sftpService, properties);
 
-        FileOrchestrator orchestrator = new FileOrchestrator(sftpService, new SftpProperties());
+        orchestrator.synchronizeRemoteDirectory();
 
-        assertThat(orchestrator.getListFiles()).containsExactly("a.txt", "b.txt");
-    }
-
-
-    @Test
-    void getFileReader_delegatesToSftpService() throws Exception {
-        SftpService sftpService = mock(SftpService.class);
-        when(sftpService.readFile("orders.csv")).thenReturn(new BufferedReader(new StringReader("hello")));
-
-        FileOrchestrator orchestrator = new FileOrchestrator(sftpService, new SftpProperties());
-
-        try (BufferedReader reader = orchestrator.getFileReader("orders.csv")) {
-            assertThat(reader.readLine()).isEqualTo("hello");
-        }
+        verify(sftpService, times(2)).listRemoteFiles();
+        verify(sftpService).downloadFile("/remote/input", "/local", "a.txt");
+        verify(sftpService).downloadFile("/remote/input", "/local", "b.txt");
     }
 
     @Test
-    void getFileReader_wrapsExceptions() throws Exception {
+    void synchronizeRemoteDirectory_wrapsListingIOException() throws Exception {
         SftpService sftpService = mock(SftpService.class);
-        when(sftpService.readFile("orders.csv")).thenThrow(new RuntimeException("bad read"));
-
+        IOException cause = new IOException("listing failed");
+        when(sftpService.listRemoteFiles()).thenThrow(cause);
         FileOrchestrator orchestrator = new FileOrchestrator(sftpService, new SftpProperties());
 
-        assertThatThrownBy(() -> orchestrator.getFileReader("orders.csv"))
-                .isInstanceOf(FileOrchestratorException.class)
-                .hasMessageContaining("Error occurred while reading file");
+        assertThatThrownBy(orchestrator::synchronizeRemoteDirectory)
+                .isInstanceOf(RuntimeException.class)
+                .hasCause(cause);
+    }
+
+    @Test
+    void synchronizeRemoteDirectory_wrapsDownloadIOException() throws Exception {
+        SftpService sftpService = mock(SftpService.class);
+        when(sftpService.listRemoteFiles()).thenReturn(List.of("a.txt"));
+        IOException cause = new IOException("download failed");
+        doThrow(cause).when(sftpService).downloadFile("/remote/input", "/local", "a.txt");
+        SftpProperties properties = new SftpProperties();
+        properties.setRemoteDirectoryInput("/remote/input");
+        properties.setLocalDirectory("/local");
+        FileOrchestrator orchestrator = new FileOrchestrator(sftpService, properties);
+
+        assertThatThrownBy(orchestrator::synchronizeRemoteDirectory)
+                .isInstanceOf(RuntimeException.class)
+                .hasCause(cause);
     }
 
     @Test

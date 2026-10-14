@@ -1,5 +1,6 @@
 package com.sftp;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
@@ -10,12 +11,9 @@ import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
  * It uses properties defined in SftpProperties to configure the SFTP connection.
  */
 @Configuration
+@RequiredArgsConstructor
 public class SftpConfigService {
     private final SftpProperties properties;
-
-    public SftpConfigService(SftpProperties properties) {
-        this.properties = properties;
-    }
 
     /**
      * Creates and configures a DefaultSftpSessionFactory bean for SFTP connections.

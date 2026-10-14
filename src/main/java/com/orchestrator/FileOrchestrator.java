@@ -1,5 +1,7 @@
 package com.orchestrator;
 
+import com.crypto.PGPProperties;
+import com.exception.SftpException;
 import com.sftp.SftpProperties;
 import com.sftp.SftpService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,6 @@ public class FileOrchestrator {
     private final SftpService sftpService;
     private final SftpProperties sftpProperties;
 
-
     /**
      * Synchronizes the remote directory on the SFTP server by downloading all files from the remote directory to the local directory.
      *
@@ -31,13 +32,16 @@ public class FileOrchestrator {
         try {
             List<String> remoteFiles = sftpService.listRemoteFiles();
             if (remoteFiles.isEmpty()) {
+                log.info("No files found in remote path: {}", sftpProperties.getRemoteDirectoryInput());
                 return;
             }
 
+            log.info("Found {} files to process in remote path.", remoteFiles.size());
             for (String file : sftpService.listRemoteFiles()) {
-                log.info("Processing remote file: {}", file);
-                sftpService.downloadFile(file);
+                log.info("Processing remote file: {}", sftpProperties.getRemoteDirectoryInput() + "/" + file);
+                sftpService.downloadFile(sftpProperties.getRemoteDirectoryInput() , sftpProperties.getLocalDirectory(), file);
             }
+            log.info("Directory synchronization and download complete.");
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

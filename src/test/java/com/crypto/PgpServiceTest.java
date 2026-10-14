@@ -53,8 +53,9 @@ public class PgpServiceTest {
 
         PgpService service = new PgpService(properties);
         try (InputStream encrypted = service.encrypt(message);
-             InputStream decrypted = service.decrypt(encrypted)) {
-            assertEquals(message, new String(decrypted.readAllBytes(), StandardCharsets.UTF_8));
+             ByteArrayOutputStream decrypted = new ByteArrayOutputStream()) {
+            service.decrypt(encrypted, decrypted);
+            assertEquals(message, decrypted.toString(StandardCharsets.UTF_8));
         }
     }
 
@@ -95,7 +96,10 @@ public class PgpServiceTest {
         validProps.setPassphrase(firstPassphrase);
 
         PgpService validService = new PgpService(validProps);
-        String encrypted = new String(validService.encrypt("mensaje secreto").readAllBytes(), StandardCharsets.UTF_8);
+        byte[] encrypted;
+        try (InputStream encryptedStream = validService.encrypt("mensaje secreto")) {
+            encrypted = encryptedStream.readAllBytes();
+        }
 
         PGPProperties wrongProps = new PGPProperties();
         wrongProps.setPublicKey(firstPublic.toString());
@@ -103,10 +107,56 @@ public class PgpServiceTest {
         wrongProps.setPassphrase(secondPassphrase);
 
         PgpService wrongService = new PgpService(wrongProps);
-        Exception exception = assertThrows(Exception.class,
-                () -> wrongService.decrypt(new java.io.ByteArrayInputStream(encrypted.getBytes(StandardCharsets.UTF_8))));
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> wrongService.decrypt(
+                        new ByteArrayInputStream(encrypted),
+                        new ByteArrayOutputStream()));
 
-        assertNotNull(exception.getMessage());
+        assertTrue(exception.getMessage().contains("Failed to decrypt PGP content"));
+        assertTrue(exception.getCause().getMessage().contains("No matching private key found"));
+    }
+
+    @Test
+    void decrypt_shouldFail_whenIntegrityCheckDoesNotMatch() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+
+        Path keyHome = Files.createTempDirectory("pgp-invalid-integrity-");
+        String uid = "integrity@example.com";
+        String passphrase = "IntegrityPassphrase!123";
+        runGpg(keyHome,
+                "--batch",
+                "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--quick-generate-key", uid, "rsa2048", "encrypt", "0");
+
+        Path publicKeyFile = keyHome.resolve("public-key.asc");
+        Path privateKeyFile = keyHome.resolve("private-key.asc");
+        runGpg(keyHome,
+                "--batch", "--yes", "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--armor", "--output", publicKeyFile.toString(), "--export", uid);
+        runGpg(keyHome,
+                "--batch", "--yes", "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--armor", "--output", privateKeyFile.toString(), "--export-secret-keys", uid);
+
+        PGPProperties properties = new PGPProperties();
+        properties.setPublicKey(publicKeyFile.toString());
+        properties.setPrivateKey(privateKeyFile.toString());
+        properties.setPassphrase(passphrase);
+        PgpService service = new PgpService(properties);
+
+        byte[] encrypted;
+        try (InputStream encryptedStream = service.encrypt("integrity protected message")) {
+            encrypted = encryptedStream.readAllBytes();
+        }
+        encrypted[encrypted.length - 1] ^= 1;
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.decrypt(new ByteArrayInputStream(encrypted), new ByteArrayOutputStream()));
+
+        assertInstanceOf(SecurityException.class, exception.getCause());
+        assertEquals("PGP integrity verification failed", exception.getCause().getMessage());
     }
 
     @Test
@@ -131,7 +181,79 @@ public class PgpServiceTest {
 
         PgpService service = new PgpService(properties);
         PGPException exception = assertThrows(PGPException.class, () -> service.encrypt("test"));
-        assertEquals("No encryption key found in public key input", exception.getMessage());
+        assertEquals("No valid encryption key found", exception.getMessage());
+    }
+
+    @Test
+    void encrypt_shouldSkipRevokedEncryptionKey() throws Exception {
+        assumeTrue(isGpgAvailable(), "gpg is required for PGP tests");
+
+        Path keyHome = Files.createTempDirectory("pgp-revoked-key-");
+        String uid = "revoked@example.com";
+        String passphrase = "RevokedPassphrase!123";
+        runGpg(keyHome,
+                "--batch",
+                "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--quick-generate-key", uid, "rsa2048", "encrypt", "0");
+
+        Path publicKeyFile = keyHome.resolve("revoked-public.asc");
+        Path privateKeyFile = keyHome.resolve("private.asc");
+        runGpg(keyHome,
+                "--batch", "--yes", "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--armor", "--output", publicKeyFile.toString(), "--export", uid);
+        runGpg(keyHome,
+                "--batch", "--yes", "--pinentry-mode", "loopback",
+                "--passphrase", passphrase,
+                "--armor", "--output", privateKeyFile.toString(), "--export-secret-keys", uid);
+
+        org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator fingerprintCalculator =
+                new org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator();
+        org.bouncycastle.openpgp.PGPPublicKeyRing publicKeyRing;
+        try (InputStream publicKeyInput = org.bouncycastle.openpgp.PGPUtil.getDecoderStream(
+                Files.newInputStream(publicKeyFile))) {
+            publicKeyRing = new org.bouncycastle.openpgp.PGPPublicKeyRing(publicKeyInput, fingerprintCalculator);
+        }
+        org.bouncycastle.openpgp.PGPPublicKey publicKey = publicKeyRing.getPublicKey();
+
+        org.bouncycastle.openpgp.PGPSecretKeyRingCollection secretKeyRings;
+        try (InputStream privateKeyInput = org.bouncycastle.openpgp.PGPUtil.getDecoderStream(
+                Files.newInputStream(privateKeyFile))) {
+            secretKeyRings = new org.bouncycastle.openpgp.PGPSecretKeyRingCollection(
+                    privateKeyInput, fingerprintCalculator);
+        }
+        if (java.security.Security.getProvider("BC") == null) {
+            java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        }
+        org.bouncycastle.openpgp.PGPSecretKey secretKey = secretKeyRings.getSecretKey(publicKey.getKeyID());
+        org.bouncycastle.openpgp.PGPPrivateKey signingKey = secretKey.extractPrivateKey(
+                new org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder()
+                        .setProvider("BC")
+                        .build(passphrase.toCharArray()));
+        org.bouncycastle.openpgp.PGPSignatureGenerator revocationGenerator =
+                new org.bouncycastle.openpgp.PGPSignatureGenerator(
+                        new org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder(
+                                publicKey.getAlgorithm(), org.bouncycastle.bcpg.HashAlgorithmTags.SHA256)
+                                .setProvider("BC"));
+        revocationGenerator.init(org.bouncycastle.openpgp.PGPSignature.KEY_REVOCATION, signingKey);
+        org.bouncycastle.openpgp.PGPSignature revocation = revocationGenerator.generateCertification(publicKey);
+        org.bouncycastle.openpgp.PGPPublicKey revokedPublicKey =
+                org.bouncycastle.openpgp.PGPPublicKey.addCertification(publicKey, revocation);
+        org.bouncycastle.openpgp.PGPPublicKeyRing revokedPublicKeyRing =
+                org.bouncycastle.openpgp.PGPPublicKeyRing.insertPublicKey(publicKeyRing, revokedPublicKey);
+        try (org.bouncycastle.bcpg.ArmoredOutputStream armoredOutput =
+                     org.bouncycastle.bcpg.ArmoredOutputStream.builder()
+                             .build(Files.newOutputStream(publicKeyFile))) {
+            revokedPublicKeyRing.encode(armoredOutput);
+        }
+
+        PGPProperties properties = new PGPProperties();
+        properties.setPublicKey(publicKeyFile.toString());
+        PgpService service = new PgpService(properties);
+
+        PGPException exception = assertThrows(PGPException.class, () -> service.encrypt("test"));
+        assertEquals("No valid encryption key found", exception.getMessage());
     }
 
     @Test
@@ -189,8 +311,9 @@ public class PgpServiceTest {
 
         PgpService service = new PgpService(properties);
         try (InputStream encrypted = Files.newInputStream(encryptedFile);
-             InputStream decrypted = service.decrypt(encrypted)) {
-            assertEquals(message, new String(decrypted.readAllBytes(), StandardCharsets.UTF_8));
+             ByteArrayOutputStream decrypted = new ByteArrayOutputStream()) {
+            service.decrypt(encrypted, decrypted);
+            assertEquals(message, decrypted.toString(StandardCharsets.UTF_8));
         }
     }
 
@@ -222,8 +345,8 @@ public class PgpServiceTest {
         ByteArrayInputStream invalidStream = makeLiteralDataPacket("not encrypted");
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> service.decrypt(invalidStream));
-        assertTrue(exception.getMessage().contains("No encrypted data list found in PGP message"));
+                () -> service.decrypt(invalidStream, new ByteArrayOutputStream()));
+        assertTrue(exception.getMessage().contains("Failed to decrypt PGP content"));
     }
 
     private static ByteArrayInputStream makeLiteralDataPacket(String content) throws Exception {
@@ -248,6 +371,25 @@ public class PgpServiceTest {
         builder.redirectErrorStream(true);
 
         Process process = builder.start();
+        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new java.io.IOException("gpg command failed: " + output);
+        }
+    }
+
+    private static void runGpgWithInput(Path gnupgHome, String input, String... args) throws Exception {
+        ProcessBuilder builder = new ProcessBuilder();
+        builder.command().add("gpg");
+        builder.command().add("--homedir");
+        builder.command().add(gnupgHome.toString());
+        builder.command().addAll(java.util.List.of(args));
+        builder.redirectErrorStream(true);
+
+        Process process = builder.start();
+        try (OutputStream processInput = process.getOutputStream()) {
+            processInput.write(input.getBytes(StandardCharsets.UTF_8));
+        }
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int exitCode = process.waitFor();
         if (exitCode != 0) {

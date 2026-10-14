@@ -13,9 +13,7 @@ class SftpTemplateTest {
 
     @Test
     void execute_returnsCallbackResult_andClosesSession() throws Exception {
-        @SuppressWarnings("unchecked")
         SessionFactory<SftpClient.DirEntry> sessionFactory = mock(SessionFactory.class);
-        @SuppressWarnings("unchecked")
         Session<SftpClient.DirEntry> session = mock(Session.class);
         when(sessionFactory.getSession()).thenReturn(session);
 

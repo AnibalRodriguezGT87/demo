@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,24 +34,26 @@ public class SftpService {
     private final PgpService pgpService;
 
     /**
-     * Reads a file from the SFTP server. If PGP encryption is enabled, the file will be decrypted before being saved locally.
+     * Downloads a file from the SFTP server. If PGP encryption is enabled, the file will be decrypted after download.
      *
-     * @param inputFile the name of the file to read from the SFTP server
-     * @throws IOException if an error occurs while reading or decrypting the file
+     * @param remotePath      the remote directory path on the SFTP server
+     * @param targetLocalFile the local directory path where the file will be saved
+     * @param fileName        the name of the file to download
+     * @throws IOException if an I/O error occurs during download or decryption
      */
-    public void downloadFile(String inputFile) throws IOException {
+    public void downloadFile(String remotePath, String targetLocalFile,  String fileName) throws IOException {
         sftpTemplate.execute(session -> {
             Path encryptedFile = Files.createTempFile("sftp-", sftpProperties.getFileExtension());
-            String remoteFilePath = sftpProperties.getRemoteDirectoryInput() + "/" + inputFile;
+            String fullRemotePath = remotePath + "/" + fileName;
 
             try (OutputStream os = Files.newOutputStream(encryptedFile)) {
-                session.read(remoteFilePath, os);
+                session.read(fullRemotePath, os);
             }
 
             if (pgpProperties.isEnabled()) {
                 Path decryptedFile = Paths.get(
-                        sftpProperties.getLocalDirectory(),
-                        inputFile.replace(sftpProperties.getFileExtension(), sftpProperties.getTempFileExtension()));
+                        targetLocalFile,
+                        fileName.replace(sftpProperties.getFileExtension(), sftpProperties.getTempFileExtension()));
 
                 try (InputStream encryptedInput = Files.newInputStream(encryptedFile);
                      OutputStream decryptedOutput = Files.newOutputStream(decryptedFile)) {
@@ -58,7 +61,7 @@ public class SftpService {
                 }
                 Files.deleteIfExists(encryptedFile);
             } else {
-                Path destinationFile = Paths.get(sftpProperties.getLocalDirectory(), inputFile);
+                Path destinationFile = Paths.get(fullRemotePath);
                 Files.move(encryptedFile, destinationFile, StandardCopyOption.REPLACE_EXISTING);
             }
             return null;
@@ -93,23 +96,19 @@ public class SftpService {
         sftpTemplate.execute(session -> {
             try {
                 if (pgpProperties.isEnabled()) {
-                    InputStream encryptedFile = pgpService.encrypt(data);
-                    session.write(encryptedFile, filePath);
+                    try (InputStream encryptedFile = pgpService.encrypt(data)) {
+                        session.write(encryptedFile, filePath);
+                    }
                     return null;
                 }
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                outputStream.write(data.getBytes());
-                ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
-                session.write(in, filePath);
-                outputStream.close();
-                in.close();
-                return null;
-            } catch (Exception e) {
-                try {
-                    throw new SftpException("Error occurred while writing file: " + e.getMessage(), e);
-                } catch (SftpException ex) {
-                    throw new RuntimeException(ex);
+
+                try (InputStream in = new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8))) {
+                    session.write(in, filePath);
                 }
+                return null;
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         });
     }

@@ -13,7 +13,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.security.Security;
@@ -46,9 +48,7 @@ public class PgpService {
     public void decrypt(InputStream encryptedStream, OutputStream decryptedOutput) {
 
         try {
-
             try (InputStream privateKeyStream = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()))) {
-
                 PGPSecretKeyRingCollection secretKeyRings =
                         new PGPSecretKeyRingCollection(
                                 PGPUtil.getDecoderStream(privateKeyStream),
@@ -74,7 +74,6 @@ public class PgpService {
 
                 while (iterator.hasNext()) {
                     PGPPublicKeyEncryptedData current = (PGPPublicKeyEncryptedData) iterator.next();
-
                     PGPSecretKey secretKey =
                             secretKeyRings.getSecretKey(
                                     current.getKeyIdentifier().getKeyId());
@@ -140,61 +139,72 @@ public class PgpService {
      * @throws Exception if encryption fails or no encryption key is found in the public key input
      */
     public InputStream encrypt(String data) throws Exception {
+        Path publicKeyPath = Paths.get(pgpProperties.getPublicKey());
 
-        InputStream publicKey = Files.newInputStream(Paths.get(pgpProperties.getPublicKey()));
+        try (InputStream publicKeyInput = Files.newInputStream(publicKeyPath)) {
+            PGPPublicKeyRingCollection keyRings =
+                    new PGPPublicKeyRingCollection(
+                            PGPUtil.getDecoderStream(publicKeyInput),
+                            new JcaKeyFingerprintCalculator());
 
-        PGPPublicKeyRingCollection keyRings = new PGPPublicKeyRingCollection(
-                PGPUtil.getDecoderStream(publicKey),
-                new JcaKeyFingerprintCalculator());
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        Iterator<PGPPublicKeyRing> ringIterator = keyRings.getKeyRings();
+            PGPEncryptedDataGenerator encryptedDataGenerator =
+                    new PGPEncryptedDataGenerator(
+                            new JcePGPDataEncryptorBuilder(
+                                    SymmetricKeyAlgorithmTags.AES_256)
+                                    .setWithIntegrityPacket(true)
+                                    .setSecureRandom(new SecureRandom())
+                                    .setProvider("BC"));
 
-        PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
-                new JcePGPDataEncryptorBuilder(
-                        SymmetricKeyAlgorithmTags.AES_256)
-                        .setWithIntegrityPacket(true)
-                        .setSecureRandom(new SecureRandom())
-                        .setProvider("BC")
-        );
+            boolean hasEncryptionKey = false;
 
-        boolean hasEncryptionKey = false;
-        while (ringIterator.hasNext()) {
-            PGPPublicKeyRing ring = ringIterator.next();
-            Iterator<PGPPublicKey> keyIterator = ring.getPublicKeys();
+            Iterator<PGPPublicKeyRing> ringIterator = keyRings.getKeyRings();
 
-            while (keyIterator.hasNext()) {
-                PGPPublicKey key = keyIterator.next();
+            while (ringIterator.hasNext()) {
+                PGPPublicKeyRing ring = ringIterator.next();
+                Iterator<PGPPublicKey> keyIterator = ring.getPublicKeys();
 
-                if (key.isEncryptionKey()) {
-                    hasEncryptionKey = true;
-                    encryptedDataGenerator.addMethod(
-                            new JcePublicKeyKeyEncryptionMethodGenerator(key).setProvider("BC"));
+                while (keyIterator.hasNext()) {
+                    PGPPublicKey key = keyIterator.next();
+
+                    if (key.isEncryptionKey() && !key.hasRevocation()) {
+                        encryptedDataGenerator.addMethod(
+                                new JcePublicKeyKeyEncryptionMethodGenerator(key)
+                                        .setProvider("BC"));
+                        hasEncryptionKey = true;
+                    }
                 }
             }
-        }
 
-        if (!hasEncryptionKey) {
-            throw new PGPException("No encryption key found in public key input");
-        }
-
-        try (OutputStream encryptedOutput = encryptedDataGenerator.open(output, new byte[4096])) {
-            PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(data.getBytes());
-            ByteArrayInputStream plainTexByteArray = new ByteArrayInputStream(outputStream.toByteArray());
-
-            try (OutputStream literalOutput = literalDataGenerator.open(
-                    encryptedOutput,
-                    PGPLiteralData.BINARY,
-                    "file",
-                    new Date(),
-                    new byte[4096])) {
-                plainTexByteArray.transferTo(literalOutput);
+            if (!hasEncryptionKey) {
+                throw new PGPException("No valid encryption key found");
             }
-            outputStream.close();
-            plainTexByteArray.close();
-        }
+            ByteArrayOutputStream encryptedBuffer = new ByteArrayOutputStream();
 
-        return new ByteArrayInputStream(output.toByteArray());
+            try (OutputStream encryptedOutput =
+                         encryptedDataGenerator.open(
+                                 encryptedBuffer,
+                                 new byte[8192]);
+
+                 InputStream plainTextInput =
+                         new ByteArrayInputStream(
+                         data.getBytes(StandardCharsets.UTF_8))) {
+
+                PGPLiteralDataGenerator literalDataGenerator =
+                        new PGPLiteralDataGenerator();
+
+                try (OutputStream literalOutput =
+                             literalDataGenerator.open(
+                                     encryptedOutput,
+                                     PGPLiteralData.BINARY,
+                                     PGPLiteralData.CONSOLE,
+                                     new Date(),
+                                     new byte[8192])) {
+
+                    plainTextInput.transferTo(literalOutput);
+                }
+            }
+
+            return new ByteArrayInputStream(encryptedBuffer.toByteArray());
+        }
     }
 }
