@@ -4,14 +4,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * DemoApplication class is the entry point for the Spring Boot application.
- * It contains the main method that starts the application.
+ * DemoApplication class is the entry point for the Spring Boot application. It contains
+ * the main method that starts the application.
  */
 @SpringBootApplication
 public class DemoApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(DemoApplication.class, args);
+		System.exit(SpringApplication.exit(SpringApplication.run(DemoApplication.class, args)));
 	}
-}
 
+}

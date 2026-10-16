@@ -13,37 +13,40 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedReader;
 
 /**
- * Iso8583MessageReader is a Spring Batch ItemReader that reads ISO 8583 messages from an SFTP server.
- * It uses the SftpService to establish a connection, read a decrypted file, and retrieve lines of data.
- * The reader is step-scoped, meaning it is created and managed within the context of a specific step execution.
+ * Iso8583MessageReader is a Spring Batch ItemReader that reads ISO 8583 messages from an
+ * SFTP server. It uses the SftpService to establish a connection, read a decrypted file,
+ * and retrieve lines of data. The reader is step-scoped, meaning it is created and
+ * managed within the context of a specific step execution.
  */
 @Component
 @StepScope
 @RequiredArgsConstructor
 public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 
-    private final FileOrchestrator fileOrchestrator;
-    /**
-     * Opens the SFTP connection and prepares to read the decrypted file.
-     *
-     */
-    @Override
-    public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
-        try {
-            fileOrchestrator.synchronizeRemoteDirectory();
-        } catch (Exception e) {
-            throw new ItemStreamException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
-        }
-    }
+	private final FileOrchestrator fileOrchestrator;
 
-    /**
-     * Reads a line from the decrypted SFTP file.
-     *
-     * @return the next line of data from the file
-     * @throws ItemStreamException if an error occurs while reading from the SFTP file
-     */
-    @Override
-    public BufferedReader read() throws BatchReadException {
-        return null;
-    }
+	/**
+	 * Opens the SFTP connection and prepares to read the decrypted file.
+	 *
+	 */
+	@Override
+	public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
+		try {
+			fileOrchestrator.synchronizeRemoteDirectory();
+		}
+		catch (Exception e) {
+			throw new ItemStreamException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Reads a line from the decrypted SFTP file.
+	 * @return the next line of data from the file
+	 * @throws ItemStreamException if an error occurs while reading from the SFTP file
+	 */
+	@Override
+	public BufferedReader read() throws BatchReadException {
+		return null;
+	}
+
 }

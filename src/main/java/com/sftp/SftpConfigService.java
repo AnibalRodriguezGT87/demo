@@ -7,40 +7,42 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.integration.sftp.session.DefaultSftpSessionFactory;
 
 /**
- * SftpConfigService class provides configuration for SFTP session factory.
- * It uses properties defined in SftpProperties to configure the SFTP connection.
+ * SftpConfigService class provides configuration for SFTP session factory. It uses
+ * properties defined in SftpProperties to configure the SFTP connection.
  */
 @Configuration
 @RequiredArgsConstructor
 public class SftpConfigService {
-    private final SftpProperties properties;
 
-    /**
-     * Creates and configures a DefaultSftpSessionFactory bean for SFTP connections.
-     *
-     * @return Configured DefaultSftpSessionFactory instance
-     */
-    @Bean
-    public DefaultSftpSessionFactory sftpSessionFactory() {
-        DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory(true);
+	private final SftpProperties properties;
 
-        factory.setHost(properties.getHost());
-        factory.setPort(properties.getPort());
-        factory.setUser(properties.getUser());
-        factory.setAllowUnknownKeys(false);
-        factory.setKnownHostsResource(new FileSystemResource(properties.getKnownHosts()));
+	/**
+	 * Creates and configures a DefaultSftpSessionFactory bean for SFTP connections.
+	 * @return Configured DefaultSftpSessionFactory instance
+	 */
+	@Bean
+	public DefaultSftpSessionFactory sftpSessionFactory() {
+		DefaultSftpSessionFactory factory = new DefaultSftpSessionFactory(true);
 
-        if (properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank()) {
-            factory.setPrivateKey(new FileSystemResource(properties.getPrivateKey()));
+		factory.setHost(properties.getHost());
+		factory.setPort(properties.getPort());
+		factory.setUser(properties.getUser());
+		factory.setAllowUnknownKeys(false);
+		factory.setKnownHostsResource(new FileSystemResource(properties.getKnownHosts()));
 
-            if (properties.getPrivateKeyPassphrase() != null && !properties.getPrivateKeyPassphrase().isBlank()) {
-                factory.setPrivateKeyPassphrase(properties.getPrivateKeyPassphrase());
-            }
+		if (properties.getPrivateKey() != null && !properties.getPrivateKey().isBlank()) {
+			factory.setPrivateKey(new FileSystemResource(properties.getPrivateKey()));
 
-        } else if (properties.getPassword() != null && !properties.getPassword().isBlank()) {
-            factory.setPassword(properties.getPassword());
-        }
+			if (properties.getPrivateKeyPassphrase() != null && !properties.getPrivateKeyPassphrase().isBlank()) {
+				factory.setPrivateKeyPassphrase(properties.getPrivateKeyPassphrase());
+			}
 
-        return factory;
-    }
+		}
+		else if (properties.getPassword() != null && !properties.getPassword().isBlank()) {
+			factory.setPassword(properties.getPassword());
+		}
+
+		return factory;
+	}
+
 }

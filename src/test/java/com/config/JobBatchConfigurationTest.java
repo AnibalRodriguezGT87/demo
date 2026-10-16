@@ -17,29 +17,30 @@ import static org.mockito.Mockito.mock;
 
 public class JobBatchConfigurationTest {
 
-    private final JobBatchConfiguration config = new JobBatchConfiguration();
+	private final JobBatchConfiguration config = new JobBatchConfiguration();
 
-    @Test
-    void jobMaking_buildsJobWithName() {
-        Step step = mock(Step.class);
-        JobRepository jobRepo = mock(JobRepository.class);
-        Job job = config.jobMaking(step, jobRepo);
-        assertNotNull(job);
-        assertEquals(JobBatchConfiguration.JOB_BEAN_NAME, job.getName());
-    }
+	@Test
+	void jobMaking_buildsJobWithName() {
+		Step step = mock(Step.class);
+		JobRepository jobRepo = mock(JobRepository.class);
+		Job job = config.jobMaking(step, jobRepo);
+		assertNotNull(job);
+		assertEquals(JobBatchConfiguration.JOB_BEAN_NAME, job.getName());
+	}
 
-    @Test
-    void step_buildsStepWithName() {
-        Iso8583MessageReader reader = mock(Iso8583MessageReader.class);
-        Iso8583MessageProcessor processor = mock(Iso8583MessageProcessor.class);
-        Iso8583MessageListener listener = mock(Iso8583MessageListener.class);
-        Iso8583MessageWriter writer = mock(Iso8583MessageWriter.class);
-        JobRepository jobRepo = mock(JobRepository.class);
-        AsyncTaskExecutor taskExecutor = mock(AsyncTaskExecutor.class);
-        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+	@Test
+	void step_buildsStepWithName() {
+		Iso8583MessageReader reader = mock(Iso8583MessageReader.class);
+		Iso8583MessageProcessor processor = mock(Iso8583MessageProcessor.class);
+		Iso8583MessageListener listener = mock(Iso8583MessageListener.class);
+		Iso8583MessageWriter writer = mock(Iso8583MessageWriter.class);
+		JobRepository jobRepo = mock(JobRepository.class);
+		AsyncTaskExecutor taskExecutor = mock(AsyncTaskExecutor.class);
+		PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
 
-        Step step = config.step(processor, listener, writer, reader, jobRepo, taskExecutor, transactionManager);
-        assertNotNull(step);
-        assertEquals("making-step", step.getName());
-    }
+		Step step = config.step(processor, listener, writer, reader, jobRepo, taskExecutor, transactionManager);
+		assertNotNull(step);
+		assertEquals("making-step", step.getName());
+	}
+
 }

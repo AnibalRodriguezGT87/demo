@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,95 +20,98 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Service class for handling SFTP operations, including reading and writing files,
- * as well as decrypting PGP-encrypted files.
+ * Service class for handling SFTP operations, including reading and writing files, as
+ * well as decrypting PGP-encrypted files.
  */
 @Service
 @RequiredArgsConstructor
 public class SftpService {
 
-    private final SftpProperties sftpProperties;
-    private final PGPProperties pgpProperties;
-    private final SftpTemplate sftpTemplate;
-    private final PgpService pgpService;
+	private final SftpProperties sftpProperties;
 
-    /**
-     * Downloads a file from the SFTP server. If PGP encryption is enabled, the file will be decrypted after download.
-     *
-     * @param remotePath      the remote directory path on the SFTP server
-     * @param targetLocalFile the local directory path where the file will be saved
-     * @param fileName        the name of the file to download
-     * @throws IOException if an I/O error occurs during download or decryption
-     */
-    public void downloadFile(String remotePath, String targetLocalFile,  String fileName) throws IOException {
-        sftpTemplate.execute(session -> {
-            Path encryptedFile = Files.createTempFile("sftp-", sftpProperties.getFileExtension());
-            String fullRemotePath = remotePath + "/" + fileName;
+	private final PGPProperties pgpProperties;
 
-            try (OutputStream os = Files.newOutputStream(encryptedFile)) {
-                session.read(fullRemotePath, os);
-            }
+	private final SftpTemplate sftpTemplate;
 
-            if (pgpProperties.isEnabled()) {
-                Path decryptedFile = Paths.get(
-                        targetLocalFile,
-                        fileName.replace(sftpProperties.getFileExtension(), sftpProperties.getTempFileExtension()));
+	private final PgpService pgpService;
 
-                try (InputStream encryptedInput = Files.newInputStream(encryptedFile);
-                     OutputStream decryptedOutput = Files.newOutputStream(decryptedFile)) {
-                    pgpService.decrypt(encryptedInput, decryptedOutput);
-                }
-                Files.deleteIfExists(encryptedFile);
-            } else {
-                Path destinationFile = Paths.get(fullRemotePath);
-                Files.move(encryptedFile, destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-            return null;
-        });
-    }
+	/**
+	 * Downloads a file from the SFTP server. If PGP encryption is enabled, the file will
+	 * be decrypted after download.
+	 * @param remotePath the remote directory path on the SFTP server
+	 * @param targetLocalFile the local directory path where the file will be saved
+	 * @param fileName the name of the file to download
+	 * @throws IOException if an I/O error occurs during download or decryption
+	 */
+	public void downloadFile(String remotePath, String targetLocalFile, String fileName) throws IOException {
+		sftpTemplate.execute(session -> {
+			Path encryptedFile = Files.createTempFile("sftp-", sftpProperties.getFileExtension());
+			String fullRemotePath = remotePath + "/" + fileName;
 
-    /**
-     * Lists the files in the remote input directory that match the configured file extensions.
-     *
-     * @return a List of file names in the remote input directory
-     * @throws IOException if an error occurs while listing files in the remote directory
-     */
-    public List<String> listRemoteFiles() throws IOException {
-        return sftpTemplate.execute(session ->
-                Arrays.stream(session.list(sftpProperties.getRemoteDirectoryInput()))
-                .map(SftpClient.DirEntry::getFilename)
-                .filter(name -> name != null && !name.isBlank()
-                        && Arrays.stream(sftpProperties.getFileExtension().split(","))
-                        .anyMatch(name::endsWith))
-                .toList());
-    }
+			try (OutputStream os = Files.newOutputStream(encryptedFile)) {
+				session.read(fullRemotePath, os);
+			}
 
-    /**
-     * Writes data to a file on the SFTP server. If PGP encryption is enabled, the data will be encrypted before writing.
-     *
-     * @param data      the data to write to the file
-     * @param filePath  the path of the file on the SFTP server
-     * @throws SftpException if an error occurs during file writing or encryption
-     * @throws IOException   if an I/O error occurs
-     */
-    public void write(String data, String filePath) throws SftpException, IOException {
-        sftpTemplate.execute(session -> {
-            try {
-                if (pgpProperties.isEnabled()) {
-                    try (InputStream encryptedFile = pgpService.encrypt(data)) {
-                        session.write(encryptedFile, filePath);
-                    }
-                    return null;
-                }
+			if (pgpProperties.isEnabled()) {
+				Path decryptedFile = Paths.get(targetLocalFile,
+						fileName.replace(sftpProperties.getFileExtension(), sftpProperties.getTempFileExtension()));
 
-                try (InputStream in = new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8))) {
-                    session.write(in, filePath);
-                }
-                return null;
+				try (InputStream encryptedInput = Files.newInputStream(encryptedFile);
+						OutputStream decryptedOutput = Files.newOutputStream(decryptedFile)) {
+					pgpService.decrypt(encryptedInput, decryptedOutput);
+				}
+				Files.deleteIfExists(encryptedFile);
+			}
+			else {
+				Path destinationFile = Paths.get(fullRemotePath);
+				Files.move(encryptedFile, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+			}
+			return null;
+		});
+	}
 
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
+	/**
+	 * Lists the files in the remote input directory that match the configured file
+	 * extensions.
+	 * @return a List of file names in the remote input directory
+	 * @throws IOException if an error occurs while listing files in the remote directory
+	 */
+	public List<String> listRemoteFiles() throws IOException {
+		return sftpTemplate.execute(session -> Arrays.stream(session.list(sftpProperties.getRemoteDirectoryInput()))
+			.map(SftpClient.DirEntry::getFilename)
+			.filter(name -> name != null && !name.isBlank()
+					&& Arrays.stream(sftpProperties.getFileExtension().split(",")).anyMatch(name::endsWith))
+			.toList());
+	}
+
+	/**
+	 * Writes data to a file on the SFTP server. If PGP encryption is enabled, the data
+	 * will be encrypted before writing.
+	 * @param data the data to write to the file
+	 * @param filePath the path of the file on the SFTP server
+	 * @throws SftpException if an error occurs during file writing or encryption
+	 * @throws IOException if an I/O error occurs
+	 */
+	public void write(String data, String filePath) throws SftpException, IOException {
+		sftpTemplate.execute(session -> {
+			try {
+				if (pgpProperties.isEnabled()) {
+					try (InputStream encryptedFile = pgpService.encrypt(data)) {
+						session.write(encryptedFile, filePath);
+					}
+					return null;
+				}
+
+				try (InputStream in = new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8))) {
+					session.write(in, filePath);
+				}
+				return null;
+
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
+	}
+
 }

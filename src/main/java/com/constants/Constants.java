@@ -6,25 +6,26 @@ import com.iso.IsoTypeDataElementEnum;
 import java.util.Map;
 
 /**
- * Constants class holds constant values and definitions used in the ISO processing.
- * It includes a map of fixed-length fields and their corresponding ISO definitions.
+ * Constants class holds constant values and definitions used in the ISO processing. It
+ * includes a map of fixed-length fields and their corresponding ISO definitions.
  */
 public class Constants {
 
-    public static final Map<Integer, IsoDefinition> FIXED_LENGTH_FIELDS = Map.of(
-            2, new IsoDefinition(IsoTypeDataElementEnum.LLVAR, 16, "PAN"),
-            7, new IsoDefinition(IsoTypeDataElementEnum.FIXED, 10, "DATE"),
-            22, new IsoDefinition(IsoTypeDataElementEnum.FIXED, 3, "POS Entry Mode"),
-            63, new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105 ,"Reserved Private"),
-            127, new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105, "Private Use")
-    );
+	public static final Map<Integer, IsoDefinition> FIXED_LENGTH_FIELDS = Map.of(2,
+			new IsoDefinition(IsoTypeDataElementEnum.LLVAR, 16, "PAN"), 7,
+			new IsoDefinition(IsoTypeDataElementEnum.FIXED, 10, "DATE"), 22,
+			new IsoDefinition(IsoTypeDataElementEnum.FIXED, 3, "POS Entry Mode"), 63,
+			new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105, "Reserved Private"), 127,
+			new IsoDefinition(IsoTypeDataElementEnum.LLLVAR, 105, "Private Use"));
 
-    public static final int MTI_LENGTH = 4;
-    public static final int BITMAP_INDEX = 16;
-    public static final String REMOTE_DIRECTORY = "remoteDirectory";
-    public static final String FILE_NAME_OUTPUT = "fileNameOutput";
-    public static final String FILE_NAME_INPUT = "fileNameInput";
+	public static final int MTI_LENGTH = 4;
 
-    public static final char SPACE = ' ';
+	public static final int BITMAP_INDEX = 16;
+
+	public static final String REMOTE_DIRECTORY = "remoteDirectory";
+
+	public static final String FILE_NAME_OUTPUT = "fileNameOutput";
+
+	public static final String FILE_NAME_INPUT = "fileNameInput";
 
 }

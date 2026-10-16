@@ -20,6 +20,7 @@
 		<jacoco.plugin.version>0.8.14</jacoco.plugin.version>
 		<logback.version>1.6.3</logback.version>
 		<org.apache.sshd.version>2.20.0</org.apache.sshd.version>
+		<spring-javaformat-maven-plugin.version>0.0.47</spring-javaformat-maven-plugin.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -172,6 +173,11 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>io.spring.javaformat</groupId>
+				<artifactId>spring-javaformat-maven-plugin</artifactId>
+				<version>${spring-javaformat-maven-plugin.version}</version>
 			</plugin>
 		</plugins>
 	</build>

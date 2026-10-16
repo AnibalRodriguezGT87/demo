@@ -19,71 +19,64 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.io.BufferedReader;
 
 /**
- * JobBatchConfiguration class is a configuration class for Spring Batch jobs.
- * It defines beans for reading from a CSV file, processing the data, and writing to an output file.
+ * JobBatchConfiguration class is a configuration class for Spring Batch jobs. It defines
+ * beans for reading from a CSV file, processing the data, and writing to an output file.
  * It also configures a job and a step for the batch processing.
-**/
+ **/
 @Configuration
 public class JobBatchConfiguration {
 
-    public static final String JOB_BEAN_NAME = "jobMaking";
-    /**
-     * This method defines a Job bean that represents the batch job.
-     * It takes a Step and a JobRepository as parameters and configures the job with a name, starting step, and an incrementer.
-     *
-     * @param step the Step to be executed in the job
-     * @param jobRepo the JobRepository for managing job metadata
-     * @return a Job instance
-    */
-    @Bean(name = JOB_BEAN_NAME)
-    public Job jobMaking(Step step, JobRepository jobRepo) {
-         return new JobBuilder(JOB_BEAN_NAME, jobRepo )
-                .start(step)
-                .incrementer(new RunIdIncrementer())
-                .build();
-    }
+	public static final String JOB_BEAN_NAME = "jobMaking";
 
-    @Bean
-    public AsyncTaskExecutor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("batch-");
-        executor.initialize();
+	/**
+	 * This method defines a Job bean that represents the batch job. It takes a Step and a
+	 * JobRepository as parameters and configures the job with a name, starting step, and
+	 * an incrementer.
+	 * @param step the Step to be executed in the job
+	 * @param jobRepo the JobRepository for managing job metadata
+	 * @return a Job instance
+	 */
+	@Bean(name = JOB_BEAN_NAME)
+	public Job jobMaking(Step step, JobRepository jobRepo) {
+		return new JobBuilder(JOB_BEAN_NAME, jobRepo).start(step).incrementer(new RunIdIncrementer()).build();
+	}
 
-        return executor;
-    }
+	@Bean
+	public AsyncTaskExecutor taskExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(5);
+		executor.setMaxPoolSize(10);
+		executor.setQueueCapacity(100);
+		executor.setThreadNamePrefix("batch-");
+		executor.initialize();
 
-    /**
-     * This method defines a Step bean that represents a step in the batch job.
-     * It takes an Iso8583MessageReader, Iso8583MessageProcessor, Iso8583MessageWriter, and JobRepository as parameters.
-     * It configures the step with a name, chunk size, reader, processor, and writer.
-     *
-     * @param read the Iso8583MessageReader for reading data
-     * @param processor the Iso8583MessageProcessor for processing data
-     * @param write the Iso8583MessageWriter for writing data
-     * @param jobRepo the JobRepository for managing job metadata
-     * @param taskExecutor the AsyncTaskExecutor for managing task execution
-     * @return a Step instance
-    */
-    @Bean
-    public Step step(Iso8583MessageProcessor processor,
-                     Iso8583MessageListener listener,
-                     Iso8583MessageWriter write,
-                     Iso8583MessageReader read,
-                     JobRepository jobRepo,
-                     AsyncTaskExecutor  taskExecutor,
-                     PlatformTransactionManager transactionManager) {
-        return new StepBuilder("making-step", jobRepo)
-                .<BufferedReader, String>chunk(1)
-                .reader(read)
-                .processor(processor)
-                .writer(write)
-                .listener(listener)
-                .transactionManager(transactionManager)
-                .taskExecutor(taskExecutor)
-                .build();
-    }
+		return executor;
+	}
+
+	/**
+	 * This method defines a Step bean that represents a step in the batch job. It takes
+	 * an Iso8583MessageReader, Iso8583MessageProcessor, Iso8583MessageWriter, and
+	 * JobRepository as parameters. It configures the step with a name, chunk size,
+	 * reader, processor, and writer.
+	 * @param read the Iso8583MessageReader for reading data
+	 * @param processor the Iso8583MessageProcessor for processing data
+	 * @param write the Iso8583MessageWriter for writing data
+	 * @param jobRepo the JobRepository for managing job metadata
+	 * @param taskExecutor the AsyncTaskExecutor for managing task execution
+	 * @return a Step instance
+	 */
+	@Bean
+	public Step step(Iso8583MessageProcessor processor, Iso8583MessageListener listener, Iso8583MessageWriter write,
+			Iso8583MessageReader read, JobRepository jobRepo, AsyncTaskExecutor taskExecutor,
+			PlatformTransactionManager transactionManager) {
+		return new StepBuilder("making-step", jobRepo).<BufferedReader, String>chunk(1)
+			.reader(read)
+			.processor(processor)
+			.writer(write)
+			.listener(listener)
+			.transactionManager(transactionManager)
+			.taskExecutor(taskExecutor)
+			.build();
+	}
 
 }

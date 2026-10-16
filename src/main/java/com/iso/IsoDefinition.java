@@ -4,36 +4,41 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * IsoDefinition class represents the definition of an ISO data element.
- * It includes the type of data element, its size, length definition, and name.
+ * IsoDefinition class represents the definition of an ISO data element. It includes the
+ * type of data element, its size, length definition, and name.
  */
 @Getter
 @Setter
 public class IsoDefinition {
 
-    private IsoTypeDataElementEnum typeDataElement;
-    private int typeElementSize;
-    private int lengthDefinition;
-    private String name;
+	private IsoTypeDataElementEnum typeDataElement;
 
-    /**
-     * Constructs an IsoDefinition with the specified type, length, and name.
-     *
-     * @param typeDataElement the type of the ISO data element
-     * @param lengthDefinition the length definition of the ISO data element
-     * @param name the name of the ISO data element
-     */
-    public IsoDefinition(IsoTypeDataElementEnum typeDataElement, int lengthDefinition,  String name) {
-        this.typeDataElement = typeDataElement;
-        this.lengthDefinition = lengthDefinition;
-        this.name = name;
+	private int typeElementSize;
 
-        if (typeDataElement.equals(IsoTypeDataElementEnum.LLVAR)){
-            this.typeElementSize = 2;
-        }else if (typeDataElement.equals(IsoTypeDataElementEnum.LLLVAR)){
-            this.typeElementSize = 3;
-        }else if (typeDataElement.equals(IsoTypeDataElementEnum.FIXED)){
-            this.typeElementSize = 0;
-        }
-    }
+	private int lengthDefinition;
+
+	private String name;
+
+	/**
+	 * Constructs an IsoDefinition with the specified type, length, and name.
+	 * @param typeDataElement the type of the ISO data element
+	 * @param lengthDefinition the length definition of the ISO data element
+	 * @param name the name of the ISO data element
+	 */
+	public IsoDefinition(IsoTypeDataElementEnum typeDataElement, int lengthDefinition, String name) {
+		this.typeDataElement = typeDataElement;
+		this.lengthDefinition = lengthDefinition;
+		this.name = name;
+
+		if (typeDataElement.equals(IsoTypeDataElementEnum.LLVAR)) {
+			this.typeElementSize = 2;
+		}
+		else if (typeDataElement.equals(IsoTypeDataElementEnum.LLLVAR)) {
+			this.typeElementSize = 3;
+		}
+		else if (typeDataElement.equals(IsoTypeDataElementEnum.FIXED)) {
+			this.typeElementSize = 0;
+		}
+	}
+
 }

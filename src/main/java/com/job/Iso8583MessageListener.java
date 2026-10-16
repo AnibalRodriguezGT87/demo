@@ -13,18 +13,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class Iso8583MessageListener implements StepExecutionListener {
 
-    @Override
-    public void beforeStep(StepExecution stepExecution) {
-        log.info("Iniciando step: {}", stepExecution.getStepName());
-        log.info("JobExecution: {}", stepExecution.getJobExecution());
-        log.info("ExecutionContext: {}", stepExecution.getExecutionContext());
-    }
+	@Override
+	public void beforeStep(StepExecution stepExecution) {
+		log.info("Iniciando step: {}", stepExecution.getStepName());
+		log.info("JobExecution: {}", stepExecution.getJobExecution());
+		log.info("ExecutionContext: {}", stepExecution.getExecutionContext());
+	}
 
-    @Override
-    public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("Registros leídos: {}", stepExecution.getReadCount());
-        log.info("Registros escritos: {}", stepExecution.getWriteCount());
+	@Override
+	public ExitStatus afterStep(StepExecution stepExecution) {
+		log.info("Registros leídos: {}", stepExecution.getReadCount());
+		log.info("Registros escritos: {}", stepExecution.getWriteCount());
 
-        return stepExecution.getExitStatus();
-    }
+		return stepExecution.getExitStatus();
+	}
+
 }

@@ -16,46 +16,47 @@ import static com.constants.Constants.FILE_NAME_OUTPUT;
 import static com.constants.Constants.REMOTE_DIRECTORY;
 
 /**
- * StartupRunner class is a CommandLineRunner that runs a Spring Batch job on application startup.
- * It takes command-line arguments as job parameters and launches the specified job.
+ * StartupRunner class is a CommandLineRunner that runs a Spring Batch job on application
+ * startup. It takes command-line arguments as job parameters and launches the specified
+ * job.
  */
 @Component
 @ConditionalOnProperty(name = "app.run-startup-job", havingValue = "true", matchIfMissing = true)
 @Slf4j
 public class StartupRunner implements CommandLineRunner {
 
-    @Autowired
-    private JobOperator jobOperator;
+	@Autowired
+	private JobOperator jobOperator;
 
-    @Autowired
-    private ApplicationContext context;
+	@Autowired
+	private ApplicationContext context;
 
-    @Value("${spring.batch.job.name}")
-    private String jobName;
+	@Value("${spring.batch.job.name}")
+	private String jobName;
 
-    /**
-     * This method is executed on application startup. It builds job parameters from command-line arguments
-     * and launches the specified job.
-     *
-     * @param args command-line arguments in the format key=value
-     * @throws Exception if there is an error during job execution
-     */
-    @Override
-    public void run(String... args) throws Exception {
-        log.info("Starting {}", jobName);
-        JobParametersBuilder builder = new JobParametersBuilder();
-        Job job = context.getBean(jobName, Job.class);
-        for (String arg : args) {
-            String[] parts = arg.split("=", 2);
-            if (parts.length == 2) {
-                builder.addString(parts[0], parts[1]);
-            }
-        }
-        builder.addString(REMOTE_DIRECTORY, "/upload");
-        builder.addString(FILE_NAME_OUTPUT, "output.csv");
-        builder.addString(FILE_NAME_INPUT, "data.csv");
-        log.info("Job started with parameters: {}", builder);
+	/**
+	 * This method is executed on application startup. It builds job parameters from
+	 * command-line arguments and launches the specified job.
+	 * @param args command-line arguments in the format key=value
+	 * @throws Exception if there is an error during job execution
+	 */
+	@Override
+	public void run(String... args) throws Exception {
+		log.info("Starting {}", jobName);
+		JobParametersBuilder builder = new JobParametersBuilder();
+		Job job = context.getBean(jobName, Job.class);
+		for (String arg : args) {
+			String[] parts = arg.split("=", 2);
+			if (parts.length == 2) {
+				builder.addString(parts[0], parts[1]);
+			}
+		}
+		builder.addString(REMOTE_DIRECTORY, "/upload");
+		builder.addString(FILE_NAME_OUTPUT, "output.csv");
+		builder.addString(FILE_NAME_INPUT, "data.csv");
+		log.info("Job started with parameters: {}", builder);
 
-        jobOperator.start(job, builder.toJobParameters());
-    }
+		jobOperator.start(job, builder.toJobParameters());
+	}
+
 }
