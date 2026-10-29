@@ -48,7 +48,9 @@ public class PgpService {
 	public void decrypt(InputStream encryptedStream, OutputStream decryptedOutput) {
 
 		try {
+
 			try (InputStream privateKeyStream = Files.newInputStream(Paths.get(pgpProperties.getPrivateKey()))) {
+
 				PGPSecretKeyRingCollection secretKeyRings = new PGPSecretKeyRingCollection(
 						PGPUtil.getDecoderStream(privateKeyStream), new JcaKeyFingerprintCalculator());
 
@@ -128,6 +130,7 @@ public class PgpService {
 	 * @throws Exception if encryption fails or no encryption key is found in the public
 	 * key input
 	 */
+	@Deprecated(forRemoval = true)
 	public InputStream encrypt(String data) throws Exception {
 		Path publicKeyPath = Paths.get(pgpProperties.getPublicKey());
 
@@ -178,6 +181,68 @@ public class PgpService {
 			}
 
 			return new ByteArrayInputStream(encryptedBuffer.toByteArray());
+		}
+	}
+
+	/**
+	 * Encrypts a local file on-the-fly and writes the encrypted output to the provided
+	 * destination stream using streaming chunks to prevent high memory usage.
+	 * @param localFilePath the path to the source file to encrypt
+	 * @param destinationStream the output stream where encrypted bytes will be written
+	 * @throws Exception if encryption fails or no valid encryption key is found
+	 */
+	public void encryptStream(Path localFilePath, OutputStream destinationStream) throws Exception {
+		Path publicKeyPath = Paths.get(pgpProperties.getPublicKey());
+
+		try (InputStream publicKeyInput = Files.newInputStream(publicKeyPath);
+				InputStream plainTextInput = Files.newInputStream(localFilePath)) {
+
+			PGPPublicKeyRingCollection keyRings = new PGPPublicKeyRingCollection(
+					PGPUtil.getDecoderStream(publicKeyInput), new JcaKeyFingerprintCalculator());
+
+			PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+					new JcePGPDataEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256).setWithIntegrityPacket(true)
+						.setSecureRandom(new SecureRandom())
+						.setProvider("BC"));
+
+			boolean hasEncryptionKey = false;
+			Iterator<PGPPublicKeyRing> ringIterator = keyRings.getKeyRings();
+
+			while (ringIterator.hasNext()) {
+				PGPPublicKeyRing ring = ringIterator.next();
+				Iterator<PGPPublicKey> keyIterator = ring.getPublicKeys();
+
+				while (keyIterator.hasNext()) {
+					PGPPublicKey key = keyIterator.next();
+
+					if (key.isEncryptionKey() && !key.hasRevocation()) {
+						encryptedDataGenerator
+							.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(key).setProvider("BC"));
+						hasEncryptionKey = true;
+					}
+				}
+			}
+
+			if (!hasEncryptionKey) {
+				throw new PGPException("No valid encryption key found");
+			}
+
+			// Chain streams: source file -> literal data packet -> encrypted stream ->
+			// destination stream
+			try (OutputStream encryptedOutput = encryptedDataGenerator.open(destinationStream, new byte[8192])) {
+				PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
+
+				try (OutputStream literalOutput = literalDataGenerator.open(encryptedOutput, PGPLiteralData.BINARY,
+						localFilePath.getFileName().toString(), new Date(), new byte[8192])) {
+
+					// Streams data chunk-by-chunk without loading the file into memory
+					plainTextInput.transferTo(literalOutput);
+				}
+			}
+
+			// Force flush to guarantee all encrypted bytes and packets travel through the
+			// pipe
+			destinationStream.flush();
 		}
 	}
 

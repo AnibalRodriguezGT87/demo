@@ -26,8 +26,6 @@ public class SftpProperties {
 
 	private String fileExtension = ".gpg";
 
-	private String tempFileExtension = ".txt";
-
 	private String localDirectory;
 
 	private String knownHosts;
@@ -39,5 +37,7 @@ public class SftpProperties {
 	private String remoteDirectoryInput;
 
 	private String remoteDirectoryOutput;
+
+	private boolean cleanupLocal;
 
 }
