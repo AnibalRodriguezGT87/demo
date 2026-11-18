@@ -16,12 +16,11 @@
 	<properties>
 		<java.version>21</java.version>
 		<bouncycastle.version>1.86</bouncycastle.version>
-		<file-processing-commons.version>1.0.0</file-processing-commons.version>
 		<jacoco.plugin.version>0.8.14</jacoco.plugin.version>
 		<logback.version>1.6.3</logback.version>
 		<org.apache.sshd.version>2.20.0</org.apache.sshd.version>
 		<spring-javaformat-maven-plugin.version>0.0.47</spring-javaformat-maven-plugin.version>
-		<file-processing-commons.version>1.2.1-SNAPSHOT</file-processing-commons.version>
+		<file-processing-commons.version>1.6.0-SNAPSHOT</file-processing-commons.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -43,18 +42,9 @@
 			<optional>true</optional>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.integration</groupId>
-			<artifactId>spring-integration-sftp</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.sshd</groupId>
-			<artifactId>sshd-sftp</artifactId>
-			<version>${org.apache.sshd.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -71,16 +61,6 @@
 			<groupId>org.springframework.batch</groupId>
 			<artifactId>spring-batch-test</artifactId>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcprov-jdk18on</artifactId>
-			<version>${bouncycastle.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcpg-jdk18on</artifactId>
-			<version>${bouncycastle.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.cccc_online.commons</groupId>
@@ -187,13 +167,4 @@
 			</plugin>
 		</plugins>
 	</build>
-	<repositories>
-		<repository>
-			<id>github</id>
-			<url>https://maven.pkg.github.com/4CsOnline/file-processing-commons</url>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
-	</repositories>
 </project>

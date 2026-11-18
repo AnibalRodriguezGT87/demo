@@ -1,9 +1,10 @@
 package com.job;
 
 import com.exception.BatchReadException;
-import com.orchestrator.FileOrchestrator;
 import jakarta.annotation.Nonnull;
 import lombok.RequiredArgsConstructor;
+import org.cccc_online.commons.orchestrator.FileOrchestrator;
+import org.cccc_online.commons.orchestrator.FileOrchestratorRegistry;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.infrastructure.item.ExecutionContext;
 import org.springframework.batch.infrastructure.item.ItemStreamException;
@@ -23,7 +24,7 @@ import java.io.BufferedReader;
 @RequiredArgsConstructor
 public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 
-	private final FileOrchestrator fileOrchestrator;
+	private final FileOrchestratorRegistry orchestratorRegistry;
 
 	/**
 	 * Opens the SFTP connection and prepares to read the decrypted file.
@@ -32,7 +33,8 @@ public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 	@Override
 	public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
 		try {
-			fileOrchestrator.synchronizeRemoteDirectory();
+			FileOrchestrator orchestrator = orchestratorRegistry.getOrchestrator("download");
+			orchestrator.synchronizeRemoteDirectory(1);
 		}
 		catch (Exception e) {
 			throw new ItemStreamException("Error occurred while opening SFTP connection:" + e.getMessage(), e);
@@ -42,10 +44,9 @@ public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 	/**
 	 * Reads a line from the decrypted SFTP file.
 	 * @return the next line of data from the file
-	 * @throws ItemStreamException if an error occurs while reading from the SFTP file
-	 */
+     */
 	@Override
-	public BufferedReader read() throws BatchReadException {
+	public BufferedReader read() {
 		return null;
 	}
 

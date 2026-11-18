@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * DemoApplication class is the entry point for the Spring Boot application. It contains
  * the main method that starts the application.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = { "com", "org.cccc_online.commons" })
 public class DemoApplication {
 
 	public static void main(String[] args) {
