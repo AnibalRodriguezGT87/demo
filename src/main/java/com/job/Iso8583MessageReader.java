@@ -1,6 +1,5 @@
 package com.job;
 
-import com.exception.BatchReadException;
 import jakarta.annotation.Nonnull;
 import lombok.RequiredArgsConstructor;
 import org.cccc_online.commons.orchestrator.FileOrchestrator;
@@ -33,7 +32,7 @@ public class Iso8583MessageReader implements ItemStreamReader<BufferedReader> {
 	@Override
 	public void open(@Nonnull ExecutionContext executionContext) throws ItemStreamException {
 		try {
-			FileOrchestrator orchestrator = orchestratorRegistry.getOrchestrator("download");
+			FileOrchestrator orchestrator = orchestratorRegistry.getOrchestrator("upload");
 			orchestrator.synchronizeRemoteDirectory(1);
 		}
 		catch (Exception e) {
